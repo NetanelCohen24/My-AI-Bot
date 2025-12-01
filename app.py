@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 st.set_page_config(page_title="העוזר האישי שלי", direction="rtl")
 
@@ -10,9 +10,8 @@ if "GOOGLE_API_KEY" not in st.secrets:
     st.error("חסר מפתח API. נא להגדיר ב-Streamlit Secrets.")
     st.stop()
 
-# הגדרת המודל
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-model = genai.GenerativeModel('gemini-1.5-flash')
+# הגדרת לקוח Gemini
+client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # שמירת היסטוריה
 if "messages" not in st.session_state:
@@ -25,17 +24,20 @@ for message in st.session_state.messages:
 
 # קלט מהמשתמש
 if prompt := st.chat_input("כתוב כאן הודעה..."):
-    # הצגת הודעת המשתמש
+    # הודעת המשתמש
     with st.chat_message("user"):
         st.write(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # קבלת תשובה
+    # תשובת המודל
     with st.chat_message("assistant"):
         with st.spinner("חושב..."):
             try:
-                response = model.generate_content(prompt)
+                response = client.models.generate_content(
+                    model="gemini-1.5-flash",
+                    contents=prompt
+                )
                 st.write(response.text)
                 st.session_state.messages.append({"role": "model", "content": response.text})
             except Exception as e:
-                st.error(f"שגיאה: {e}") 
+                st.error(f"שגיאה: {e}")
