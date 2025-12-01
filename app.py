@@ -1,60 +1,33 @@
 import streamlit as st
-from google import genai  # אם אתה משתמש בזה
+import google.generativeai as genai
 
-# הגדרת כותרת הדף (בלי direction)
-st.set_page_config(
-    page_title="העוזר האישי שלי",
-    layout="wide"  # אפשרות להצגה רחבה
-)
-
-# CSS מותאם ל-RTL
-st.markdown(
-    """
-    <style>
-    /* העמוד כולו מימין לשמאל */
-    html, body, [class*="css"] {
-        direction: rtl;
-        text-align: right;
-    }
-
-    /* כותרות */
-    .stHeader h1, .stHeader h2, .stHeader h3, .stHeader h4, .stHeader h5 {
-        text-align: right;
-    }
-
-    /* טקסטים רגילים */
-    .stText, .stMarkdown p {
-        text-align: right;
-    }
-
-    /* כפתורים */
-    button[kind="primary"], button[kind="secondary"] {
-        direction: rtl;
-    }
-
-    /* קלטים */
-    input, textarea, select {
-        direction: rtl;
-        text-align: right;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# כותרת ראשית
+st.set_page_config(page_title="הבוט שלי", direction="rtl")
 st.title("🤖 העוזר החכם שלי")
 
-# תיבת קלט לדוגמה
-user_input = st.text_input("כתוב כאן את השאלה שלך:")
+if "GOOGLE_API_KEY" not in st.secrets:
+    st.error("חסר מפתח API. נא להגדיר ב-Streamlit Secrets.")
+    st.stop()
 
-# כפתור לשליחה
-if st.button("שלח"):
-    if user_input:
-        # כאן תוכל לקרוא ל-GenAI או כל לוגיקה אחרת
-        st.success(f"השאלה שלך: {user_input} נשלחה בהצלחה!")
-    else:
-        st.warning("אנא כתוב שאלה לפני השליחה.")
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-# תיבת טקסט להצגת פלט לדוגמה
-st.text_area("תשובות:", "כאן יופיעו התשובות של העוזר שלך...")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+if prompt := st.chat_input("כתוב כאן..."):
+    with st.chat_message("user"):
+        st.write(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    with st.chat_message("assistant"):
+        with st.spinner("חושב..."):
+            try:
+                response = model.generate_content(prompt)
+                st.write(response.text)
+                st.session_state.messages.append({"role": "model", "content": response.text})
+            except Exception as e:
+                st.error(f"שגיאה: {e}")
