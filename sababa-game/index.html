@@ -146,6 +146,16 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.45}
 .rate button .v{font-weight:900;font-size:.8rem}
 .rate button.on{background:var(--ink);color:var(--lemon);transform:translateY(2px)}
 .notes{display:flex;flex-direction:column;gap:18px}
+.note.spot{padding:26px 18px 22px;animation:slap .55s cubic-bezier(.3,1.6,.5,1) both}
+.note.spot .line{font-size:1.45rem;line-height:1.4}
+@keyframes slap{0%{transform:translateY(-40px) rotate(-8deg) scale(.7);opacity:0}100%{transform:rotate(-1deg);opacity:1}}
+.rate.big{gap:8px}
+.rate.big button{border-width:3px;box-shadow:0 4px 0 var(--ink);padding:10px 0 6px;border-radius:14px}
+.rate.big button .e{font-size:2rem}
+.rate.big button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.progress{display:flex;flex-direction:column;gap:6px;font-weight:900}
+.progress .bar{height:10px;border:2px solid var(--ink);border-radius:999px;background:var(--paper);overflow:hidden}
+.progress .bar i{display:block;height:100%;background:var(--ink);transition:width .4s}
 
 .result{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;background:#fff;border:3px solid var(--ink);border-radius:14px;padding:12px;box-shadow:0 4px 0 var(--ink);animation:rise .5s both}
 .result.top{background:var(--lemon)}
@@ -303,6 +313,10 @@ const roundsOf = r => r.settings?.rounds || 5;
 /* who still owes a rating: online players who have at least one answer by someone else to rate */
 const rateTargets = (r, pid) => (r.order || []).filter(a => a !== pid && (r.answers || {})[a]);
 const ratersPending = r => onlinePlayers(r).filter(p => rateTargets(r, p.id).length && !(r.ratings || {})[p.id]).map(p => p.id);
+/* one-by-one rating: everyone rates the current line together */
+const curAuthor = r => (r.order || [])[r.idx || 0];
+const curRaters = r => onlinePlayers(r).filter(p => p.id !== curAuthor(r)).map(p => p.id);
+const curPending = r => curRaters(r).filter(id => !(r.ratings || {})[id]?.[curAuthor(r)]);
 const writersPending = r => onlinePlayers(r).filter(p => !(r.answers || {})[p.id]).map(p => p.id);
 
 /* ============ mutations (inside tx) ============ */
@@ -320,8 +334,12 @@ function newRound(r, now){
 function closeWriting(r){
   const ids = Object.keys(r.answers || {});
   if (!ids.length){ r.phase = "results"; r.results = []; return; }
-  r.order = shuffle(ids); r.ratings = null; r.phase = "rating";
-  if (!ratersPending(r).length) closeRating(r);
+  r.order = shuffle(ids); r.ratings = null; r.idx = 0; r.phase = "rating";
+  if (!curPending(r).length) advanceCard(r);
+}
+function advanceCard(r){
+  r.idx = (r.idx || 0) + 1;
+  if (r.idx >= (r.order || []).length) closeRating(r);
 }
 function closeRating(r){
   const ratings = r.ratings || {};
@@ -340,8 +358,9 @@ const A = {
   newTopic: (t, now) => r => { if (r.phase !== "writing" || Object.keys(r.answers || {}).length) return false; r.topic = t || pick(TOPICS.filter(x => x !== r.topic)); if (r.settings?.timer) r.deadline = now + r.settings.timer * 1000; },
   answer: (pid, text) => r => { if (r.phase !== "writing") return false; r.answers = r.answers || {}; r.answers[pid] = text; if (!writersPending(r).length) closeWriting(r); },
   closeWriting: r => { if (r.phase !== "writing") return false; closeWriting(r); },
-  rate: (pid, map) => r => { if (r.phase !== "rating") return false; r.ratings = r.ratings || {}; r.ratings[pid] = map; if (!ratersPending(r).length) closeRating(r); },
-  closeRating: r => { if (r.phase !== "rating") return false; closeRating(r); },
+  rate: (pid, a, v) => r => { if (r.phase !== "rating" || curAuthor(r) !== a || pid === a) return false;
+    r.ratings = r.ratings || {}; r.ratings[pid] = { ...(r.ratings[pid] || {}), [a]: v }; if (!curPending(r).length) advanceCard(r); },
+  skipCard: idx => r => { if (r.phase !== "rating" || (r.idx || 0) !== idx) return false; advanceCard(r); },
   next: now => r => { if (r.phase !== "results") return false; newRound(r, now); },
   toLobby: r => { r.phase = "lobby"; r.round = 0; r.answers = r.ratings = r.order = r.results = null; },
 };
@@ -406,8 +425,8 @@ function driveBots(){
   const bots = onlinePlayers(r).filter(p => p.isBot).map(p => p.id); if (!bots.length) return;
   const k = r.phase + ":" + r.round;
   if (r.phase === "writing") bots.filter(id => !(r.answers || {})[id]).forEach(id => botLater(k + id, 2500 + rnd(5000), () => act(A.answer(id, botLine(room)))));
-  if (r.phase === "rating") bots.filter(id => !(r.ratings || {})[id]).forEach(id => botLater(k + id, 1500 + rnd(3500), () => {
-    const m = {}; rateTargets(room, id).forEach(a => m[a] = 1 + rnd(5)); act(A.rate(id, m)); }));
+  if (r.phase === "rating"){ const a = curAuthor(r); curPending(r).filter(id => bots.includes(id)).forEach(id =>
+    botLater(k + ":" + r.idx + ":" + id, 1800 + rnd(3500), () => act(A.rate(id, a, 1 + rnd(5))))); }
 }
 async function addBot(){
   const now = B.now();
@@ -429,7 +448,7 @@ setInterval(() => {
     const k = room.round + ":" + room.deadline;
     if (left <= 0 && isHost() && closeAsked !== k){ closeAsked = k; act(A.closeWriting); }
   }
-  if (room.phase === "rating" && isHost() && !ratersPending(room).length) act(A.closeRating);
+  if (room.phase === "rating" && isHost() && !curPending(room).length){ const i = room.idx || 0; act(A.skipCard(i)); }
 }, 250);
 
 /* ============ confetti ============ */
@@ -538,25 +557,19 @@ function vWriting(r){
 }
 
 function vRating(r){
-  const targets = rateTargets(r, me.pid);
-  const sent = (r.ratings || {})[me.pid];
-  const pending = ratersPending(r);
-  const raters = onlinePlayers(r).filter(p => rateTargets(r, p.id).length).map(p => p.id);
-  let body;
-  if (sent || !targets.length){
-    body = `<div class="card center"><div class="label">${sent ? "הדירוג שלך נשלח ✅" : "אין לך מה לדרג בסיבוב הזה"}</div><div class="muted small">מחכים שכולם יסיימו ${dots}</div></div>`;
-  } else {
-    const all = targets.every(a => ui.rates[a]);
-    body = `<div class="label" style="text-align:center">דרג/י כל משפט. בלי שמות, בלי רחמים 😈</div>
-    <div class="notes">${(r.order || []).filter(a => (r.answers || {})[a]).map(a => `<div class="note ${a === me.pid ? "mine" : ""}">
-      <div class="line"><b>סבבה והכל, אבל</b> ${esc(r.answers[a])}</div>
-      ${a === me.pid ? `<div class="small muted">זה המשפט שלך</div>` : `<div class="rate">${RATE.map((e, i) => `<button data-act="rate" data-a="${esc(a)}" data-v="${i + 1}" class="${ui.rates[a] === i + 1 ? "on" : ""}" aria-label="ציון ${i + 1}"><span class="e">${e}</span><span class="v">${i + 1}</span></button>`).join("")}</div>`}
-    </div>`).join("")}</div>
-    <button class="btn berry big block" data-act="sendRates" ${all ? "" : "disabled"}>${all ? "שלח דירוגים 🗳️" : `דרגת ${targets.filter(a => ui.rates[a]).length}/${targets.length}`}</button>`;
-  }
-  return `${topbar()}${topicBox(r)}${body}
+  const a = curAuthor(r), n = (r.order || []).length, i = (r.idx || 0) + 1;
+  const mine = a === me.pid, my = (r.ratings || {})[me.pid]?.[a];
+  const raters = curRaters(r), pending = curPending(r);
+  const action = mine ? `<div class="card center"><div class="label">🤫 זה המשפט שלך!</div><div class="muted small">תעשה/י פרצוף פוקר בזמן שכולם מדרגים</div></div>`
+    : my ? `<div class="card center"><div class="label">דירגת ${RATE[my - 1]} ${my}</div><div class="muted small">מחכים לשאר ${dots}</div></div>`
+    : `<div class="label" style="text-align:center">כמה זה מצחיק? 👇</div>
+       <div class="rate big">${RATE.map((e, k) => `<button data-act="rate" data-a="${esc(a)}" data-v="${k + 1}" aria-label="ציון ${k + 1}"><span class="e">${e}</span><span class="v">${k + 1}</span></button>`).join("")}</div>`;
+  return `${topbar()}${topicBox(r)}
+    <div class="progress"><span>משפט ${i} מתוך ${n}</span><div class="bar"><i style="width:${Math.round((i - 1) / n * 100)}%"></i></div></div>
+    <div class="note spot" data-k="${r.round}-${i}"><div class="line"><b>סבבה והכל, אבל</b> ${esc((r.answers || {})[a])}</div></div>
+    ${action}
     <div class="card"><div class="row" style="align-items:center"><div class="label">מי כבר דירג</div><span class="chip" style="flex:0 0 auto">${raters.length - pending.length}/${raters.length}</span></div>${pills(r, raters, id => !pending.includes(id))}</div>
-    ${hostTools(raters.length - pending.length > 0 ? `<button class="btn small" data-act="closeRating">⏭ סגור דירוג</button>` : "")}`;
+    ${hostTools(`<button class="btn small" data-act="skipCard" data-i="${i - 1}">⏭ למשפט הבא</button>`)}`;
 }
 
 function board(r){
@@ -605,7 +618,7 @@ function render(){
   const ci = $("#codeInput"); if (ci) ci.value = keep.codeInput ?? (location.hash.match(/^#([A-Za-z0-9]{4})$/)?.[1] || "").toUpperCase();
   const an = $("#answer"); if (an){ an.value = ui.text; const c = $("#counter"); if (c) c.textContent = ui.text.length + "/160"; }
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus({ preventScroll: true }); if (sel) try { el.setSelectionRange(...sel); } catch(e){} } }
-  if (room?.phase === "rating") window.scrollTo(0, y);
+  const sp = $(".note.spot"); if (sp){ if (sp.dataset.k === ui.lastSpot) sp.style.animation = "none"; else { ui.lastSpot = sp.dataset.k; try { navigator.vibrate?.(40); } catch(e){} } }
 }
 
 /* ============ events ============ */
@@ -633,12 +646,8 @@ document.addEventListener("click", async e => {
       return act(A.answer(me.pid, text));
     }
     case "closeWriting": return act(A.closeWriting);
-    case "rate": ui.rates[t.dataset.a] = +v; return render();
-    case "sendRates": {
-      const m = {}; rateTargets(room, me.pid).forEach(x => { if (ui.rates[x]) m[x] = ui.rates[x]; });
-      return act(A.rate(me.pid, m));
-    }
-    case "closeRating": return act(A.closeRating);
+    case "rate": return act(A.rate(me.pid, t.dataset.a, +v));
+    case "skipCard": return act(A.skipCard(+t.dataset.i));
     case "next": return act(A.next(B.now()));
     case "again": return act(A.toLobby);
   }
