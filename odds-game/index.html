@@ -338,6 +338,15 @@ function LocalBackend(){
   };
 }
 
+/* presence: marks me online/offline without ever creating a nameless "ghost" player */
+function fbPresence(db, path){
+  const pref = db.ref(path), con = db.ref(".info/connected");
+  const h = s => { if (!s.val()) return;
+    pref.child("online").onDisconnect().set(false);
+    pref.child("name").get().then(n => { if (n.exists()) pref.child("online").set(true); }).catch(() => {}); };
+  con.on("value", h);
+  return () => { con.off("value", h); pref.child("online").onDisconnect().cancel(); };
+}
 function FirebaseBackend(){
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
@@ -359,23 +368,20 @@ function FirebaseBackend(){
       });
       return res.committed && res.snapshot.exists();
     },
-    presence(c, pid){
-      const on = ref("rooms/" + c + "/players/" + pid + "/online");
-      ref(".info/connected").on("value", s => { if (s.val()){ on.onDisconnect().set(false); on.set(true); } });
-    },
+    presence(c, pid){ return fbPresence(db, "rooms/" + c + "/players/" + pid); },
   };
 }
 
 /* =================== app state =================== */
 let B = null;                     // backend
 let code = null, room = null, proof = null;
-let unwatch = [], loaded = false, notFound = false;
+let stopPresence = null, unwatch = [], loaded = false, notFound = false;
 const me = { pid: sget("odds-pid") || uid(), name: store.get("odds-name") || "" };
 sset("odds-pid", me.pid);
 const ui = { pick: null, text: "", max: 10, doer: null, vote: null, rounds: 5, busy: false, lastPhaseKey: "", alarmKey: "" };
 
 /* =================== game helpers =================== */
-const playersOf = r => Object.entries(r?.players || {}).map(([id, p]) => ({ id, ...p })).sort((a, b) => a.joinedAt - b.joinedAt);
+const playersOf = r => Object.entries(r?.players || {}).filter(([, p]) => p && p.name).map(([id, p]) => ({ id, ...p })).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
 const onlinePlayers = r => playersOf(r).filter(p => p.online !== false);
 function hostOf(r){
   const humans = onlinePlayers(r).filter(p => !p.isBot);
@@ -385,7 +391,7 @@ const isHost = () => room && hostOf(room) === me.pid;
 const P = (r, id) => (r?.players || {})[id];
 const nameOf = (r, id) => P(r, id)?.name || "?";
 function av(r, id, cls = ""){
-  const p = P(r, id) || { avatar: 0 };
+  const p = P(r, id) || {}; p.avatar = Number.isInteger(p.avatar) ? p.avatar : 0;
   return `<div class="av ${cls}" style="background:${AV_COLORS[p.avatar % AV_COLORS.length]}">${AVATARS[p.avatar % AVATARS.length]}</div>`;
 }
 const votersOf = r => onlinePlayers(r).filter(p => p.id !== r.doer).map(p => p.id);
@@ -457,7 +463,9 @@ async function joinRoom(c){
   const now = B.now();
   const res = await B.tx(c, r => {
     r.players = r.players || {};
-    if (r.players[me.pid]){ r.players[me.pid].name = me.name; r.players[me.pid].online = true; return; }
+    for (const [id, p] of Object.entries(r.players)) if (!p || !p.name) delete r.players[id];
+    const mine = r.players[me.pid];
+    if (mine && Number.isInteger(mine.avatar)){ mine.name = me.name; mine.online = true; return; }
     if (Object.keys(r.players).length >= 14) return false;
     const used = new Set(Object.values(r.players).map(p => p.avatar));
     let a = rnd(AVATARS.length); for (let i = 0; i < AVATARS.length && used.has(a); i++) a = (a + 1) % AVATARS.length;
@@ -474,13 +482,13 @@ function enterRoom(c){
   unwatch.forEach(f => f()); unwatch = [];
   unwatch.push(B.watch(c, v => { loaded = true; room = v; notFound = !v; onRoom(); }));
   unwatch.push(B.watchProof(c, v => { proof = v; render(); }));
-  B.presence(c, me.pid);
+  stopPresence?.(); stopPresence = B.presence(c, me.pid);
   render();
 }
 async function leaveRoom(){
   const c = code;
   if (c){ await act(r => { if (!r.players?.[me.pid]) return false; if (r.phase === "lobby") delete r.players[me.pid]; else r.players[me.pid].online = false; }); }
-  unwatch.forEach(f => f()); unwatch = [];
+  unwatch.forEach(f => f()); unwatch = []; stopPresence?.(); stopPresence = null;
   code = null; room = null; proof = null; sdel("odds-room");
   try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
   stopConfetti(); render();
@@ -960,7 +968,7 @@ document.addEventListener("click", async e => {
     if (me.name){ if (j) joinRoom(j); else createRoom(); return; }
   }
   const saved = sget("odds-room");
-  if (saved && me.name && await B.exists(saved)) enterRoom(saved);
+  if (saved && me.name && await B.exists(saved)){ joinRoom(saved); }
 })();
 </script>
 </body>

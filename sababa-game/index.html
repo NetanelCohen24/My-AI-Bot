@@ -148,7 +148,8 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.45}
 .notes{display:flex;flex-direction:column;gap:18px}
 .note.spot{padding:26px 18px 22px;animation:slap .55s cubic-bezier(.3,1.6,.5,1) both}
 .note.spot .line{font-size:1.45rem;line-height:1.4}
-@keyframes slap{0%{transform:translateY(-40px) rotate(-8deg) scale(.7);opacity:0}100%{transform:rotate(-1deg);opacity:1}}
+@keyframes slap{0%{transform:translateY(-40px) rotate(-8deg) scale(.7);opacity:0}100%{transform:rotate(var(--tilt, -1deg));opacity:1}}
+.note.spot{transform:rotate(var(--tilt, -1deg))}
 .rate.big{gap:8px}
 .rate.big button{border-width:3px;box-shadow:0 4px 0 var(--ink);padding:10px 0 6px;border-radius:14px}
 .rate.big button .e{font-size:2rem}
@@ -158,7 +159,7 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.45}
 .progress .bar i{display:block;height:100%;background:var(--ink);transition:width .4s}
 
 .result{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;background:#fff;border:3px solid var(--ink);border-radius:14px;padding:12px;box-shadow:0 4px 0 var(--ink);animation:rise .5s both}
-.result.top{background:var(--lemon)}
+.result.top{border-width:4px;box-shadow:0 7px 0 var(--ink)}
 .result .rk{font-family:var(--display);font-size:1.4rem;text-align:center}
 .result .who{display:flex;align-items:center;gap:6px;font-weight:900;font-size:.9rem;margin-top:6px}
 .result .who .av{width:26px;height:26px;font-size:.9rem;border-radius:50%}
@@ -256,6 +257,8 @@ function botLine(r){
   return pick(pool.length ? pool : BOT_LINES);
 }
 const EXAMPLES = ["למה המזגן בעבודה תמיד על 16?","למה תמיד יש מישהו שעונה 'אמן' על הכל?","מי צריך 400 הודעות על איזה צבע בלונים?"];
+const CARD_COLORS = ["#FFD84A","#FFB3CB","#9EEBDD","#A9D8FF","#D6C2FF","#FFC59E","#D9F27A","#FF9E8A"];
+const cardColor = (round, i) => CARD_COLORS[(i + (round || 0) * 3) % CARD_COLORS.length];
 const RATE = ["😐","🙂","😄","🤣","💀"];
 
 /* ============ backends ============ */
@@ -279,6 +282,15 @@ function LocalBackend(){
     presence(){},
   };
 }
+/* presence: marks me online/offline without ever creating a nameless "ghost" player */
+function fbPresence(db, path){
+  const pref = db.ref(path), con = db.ref(".info/connected");
+  const h = s => { if (!s.val()) return;
+    pref.child("online").onDisconnect().set(false);
+    pref.child("name").get().then(n => { if (n.exists()) pref.child("online").set(true); }).catch(() => {}); };
+  con.on("value", h);
+  return () => { con.off("value", h); pref.child("online").onDisconnect().cancel(); };
+}
 function FirebaseBackend(){
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(); let offset = 0;
@@ -290,24 +302,24 @@ function FirebaseBackend(){
     create: (c, d) => ref(c).set(d),
     watch(c, cb){ const r = ref(c), h = s => cb(s.val()); r.on("value", h); return () => r.off("value", h); },
     async tx(c, fn){ const res = await ref(c).transaction(cur => { if (cur === null) return null; return fn(cur) === false ? undefined : cur; }); return res.committed && res.snapshot.exists(); },
-    presence(c, pid){ const on = db.ref("rooms/" + KEY(c) + "/players/" + pid + "/online"); db.ref(".info/connected").on("value", s => { if (s.val()){ on.onDisconnect().set(false); on.set(true); } }); },
+    presence(c, pid){ return fbPresence(db, "rooms/" + KEY(c) + "/players/" + pid); },
   };
 }
 
 /* ============ state ============ */
-let B = null, code = null, room = null, unwatch = null, loaded = false;
+let stopPresence = null, B = null, code = null, room = null, unwatch = null, loaded = false;
 const me = { pid: sget("sb-pid") || uid(), name: store.get("sb-name") || store.get("odds-name") || "" };
 sset("sb-pid", me.pid);
 const ui = { text: "", rates: {}, phaseKey: "", busy: false, topicDraft: "" };
 
 /* ============ helpers ============ */
-const playersOf = r => Object.entries(r?.players || {}).map(([id, p]) => ({ id, ...p })).sort((a, b) => a.joinedAt - b.joinedAt);
+const playersOf = r => Object.entries(r?.players || {}).filter(([, p]) => p && p.name).map(([id, p]) => ({ id, ...p })).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
 const onlinePlayers = r => playersOf(r).filter(p => p.online !== false);
 const hostOf = r => onlinePlayers(r).filter(p => !p.isBot)[0]?.id || r?.hostPid;
 const isHost = () => room && hostOf(room) === me.pid;
 const P = (r, id) => (r?.players || {})[id];
 const nameOf = (r, id) => P(r, id)?.name || "?";
-function av(r, id){ const p = P(r, id) || { avatar: 0 }; return `<div class="av" style="background:${AV_COLORS[p.avatar % AV_COLORS.length]}">${AVATARS[p.avatar % AVATARS.length]}</div>`; }
+function av(r, id){ const p = P(r, id) || {}; p.avatar = Number.isInteger(p.avatar) ? p.avatar : 0; return `<div class="av" style="background:${AV_COLORS[p.avatar % AV_COLORS.length]}">${AVATARS[p.avatar % AVATARS.length]}</div>`; }
 const dots = `<span class="dots"><span></span><span></span><span></span></span>`;
 const roundsOf = r => r.settings?.rounds || 5;
 /* who still owes a rating: online players who have at least one answer by someone else to rate */
@@ -355,7 +367,12 @@ function closeRating(r){
 }
 const A = {
   start: now => r => { if (!["lobby", "final"].includes(r.phase)) return false; Object.values(r.players || {}).forEach(p => p.score = 0); r.hall = null; r.round = 0; newRound(r, now); },
-  newTopic: (t, now) => r => { if (r.phase !== "writing" || Object.keys(r.answers || {}).length) return false; r.topic = t || pick(TOPICS.filter(x => x !== r.topic)); if (r.settings?.timer) r.deadline = now + r.settings.timer * 1000; },
+  newTopic: (t, now) => r => { if (r.phase !== "writing") return false;
+    const used = new Set([...(r.usedTopics || []), r.topic]); const pool = TOPICS.filter(x => !used.has(x));
+    r.topic = t || pick(pool.length ? pool : TOPICS.filter(x => x !== r.topic));
+    r.usedTopics = [...(r.usedTopics || []), r.topic].slice(-25);
+    r.answers = null; r.swaps = (r.swaps || 0) + 1;
+    if (r.settings?.timer) r.deadline = now + r.settings.timer * 1000; },
   answer: (pid, text) => r => { if (r.phase !== "writing") return false; r.answers = r.answers || {}; r.answers[pid] = text; if (!writersPending(r).length) closeWriting(r); },
   closeWriting: r => { if (r.phase !== "writing") return false; closeWriting(r); },
   rate: (pid, a, v) => r => { if (r.phase !== "rating" || curAuthor(r) !== a || pid === a) return false;
@@ -386,7 +403,9 @@ async function joinRoom(c){
   const now = B.now();
   const ok = await B.tx(c, r => {
     r.players = r.players || {};
-    if (r.players[me.pid]){ r.players[me.pid].name = me.name; r.players[me.pid].online = true; return; }
+    for (const [id, p] of Object.entries(r.players)) if (!p || !p.name) delete r.players[id];
+    const mine = r.players[me.pid];
+    if (mine && Number.isInteger(mine.avatar)){ mine.name = me.name; mine.online = true; return; }
     if (Object.keys(r.players).length >= 14) return false;
     const used = new Set(Object.values(r.players).map(p => p.avatar)); let a = rnd(AVATARS.length);
     for (let i = 0; i < AVATARS.length && used.has(a); i++) a = (a + 1) % AVATARS.length;
@@ -399,11 +418,11 @@ function enterRoom(c){
   code = c; loaded = false; room = null; sset("sb-room", c);
   try { history.replaceState(null, "", location.pathname + location.search + "#" + c); } catch(e){}
   unwatch?.(); unwatch = B.watch(c, v => { loaded = true; room = v; onRoom(); });
-  B.presence(c, me.pid); render();
+  stopPresence?.(); stopPresence = B.presence(c, me.pid); render();
 }
 async function leaveRoom(){
   if (code) await act(r => { if (!r.players?.[me.pid]) return false; if (r.phase === "lobby") delete r.players[me.pid]; else r.players[me.pid].online = false; });
-  unwatch?.(); unwatch = null; code = null; room = null; sdel("sb-room");
+  unwatch?.(); unwatch = null; stopPresence?.(); stopPresence = null; code = null; room = null; sdel("sb-room");
   try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
   stopConfetti(); render();
 }
@@ -411,6 +430,8 @@ function onRoom(){
   if (room && !room.players?.[me.pid]){ toast("יצאת מהחדר"); leaveRoom(); return; }
   if (room){
     const k = room.phase + ":" + room.round;
+    if (room.phase === "writing" && ui.topicKey === k && ui.topic && ui.topic !== room.topic) toast("🔄 נושא חדש: " + room.topic);
+    ui.topicKey = k; ui.topic = room.topic;
     if (k !== ui.phaseKey){ ui.phaseKey = k; if (room.phase === "writing") ui.text = ""; ui.rates = {}; window.scrollTo({ top: 0, behavior: "smooth" }); if (room.phase !== "final") stopConfetti(); }
     if (room.phase === "final") startConfetti();
   }
@@ -551,9 +572,11 @@ function vWriting(r){
       <div class="counter" id="counter">0/160</div>
       <button class="btn lemon big block" data-act="answer">שלח 😤</button>
     </div>`;
-  return `${topbar()}${topicBox(r)}${body}
+  const swap = isHost() ? `<button class="btn sky block" data-act="newTopic">🔄 הנושא לא טוב? החלף נושא${Object.keys(r.answers || {}).length ? " (התשובות יימחקו)" : ""}</button>`
+    : `<div class="small" style="text-align:center;font-weight:700">נושא לא טוב? בקש/י מ${esc(nameOf(r, hostOf(r)))} להחליף 🔄</div>`;
+  return `${topbar()}${topicBox(r)}${swap}${body}
     <div class="card"><div class="row" style="align-items:center"><div class="label">מי כבר שלח</div><span class="chip" style="flex:0 0 auto">${ids.filter(done).length}/${ids.length}</span></div>${pills(r, ids, done)}</div>
-    ${hostTools(`${Object.keys(r.answers || {}).length ? "" : `<button class="btn small" data-act="newTopic">🎲 נושא אחר</button>`}<button class="btn small" data-act="closeWriting">⏭ סגור כתיבה</button>`)}`;
+    ${hostTools(`<button class="btn small" data-act="closeWriting">⏭ סגור כתיבה</button>`)}`;
 }
 
 function vRating(r){
@@ -566,7 +589,7 @@ function vRating(r){
        <div class="rate big">${RATE.map((e, k) => `<button data-act="rate" data-a="${esc(a)}" data-v="${k + 1}" aria-label="ציון ${k + 1}"><span class="e">${e}</span><span class="v">${k + 1}</span></button>`).join("")}</div>`;
   return `${topbar()}${topicBox(r)}
     <div class="progress"><span>משפט ${i} מתוך ${n}</span><div class="bar"><i style="width:${Math.round((i - 1) / n * 100)}%"></i></div></div>
-    <div class="note spot" data-k="${r.round}-${i}"><div class="line"><b>סבבה והכל, אבל</b> ${esc((r.answers || {})[a])}</div></div>
+    <div class="note spot" data-k="${r.round}-${i}" style="background:${cardColor(r.round, i)};--tilt:${i % 2 ? -1.5 : 1.5}deg"><div class="line"><b>סבבה והכל, אבל</b> ${esc((r.answers || {})[a])}</div></div>
     ${action}
     <div class="card"><div class="row" style="align-items:center"><div class="label">מי כבר דירג</div><span class="chip" style="flex:0 0 auto">${raters.length - pending.length}/${raters.length}</span></div>${pills(r, raters, id => !pending.includes(id))}</div>
     ${hostTools(`<button class="btn small" data-act="skipCard" data-i="${i - 1}">⏭ למשפט הבא</button>`)}`;
@@ -581,7 +604,7 @@ function vResults(r){
   const res = r.results || [], last = r.round >= roundsOf(r);
   return `${topbar()}${topicBox(r)}
   ${res.length ? `<div class="label" style="text-align:center">וזה מי שכתב מה 👀</div>
-    ${res.map((x, i) => `<div class="result ${i === 0 && x.pts > 0 ? "top" : ""}" style="animation-delay:${i * .25}s">
+    ${res.map((x, i) => `<div class="result ${i === 0 && x.pts > 0 ? "top" : ""}" style="animation-delay:${i * .25}s;background:${cardColor(r.round, i + 1)}">
       <div class="rk">${["🥇","🥈","🥉"][i] || i + 1}</div>
       <div style="min-width:0"><div class="line"><b>סבבה והכל, אבל</b> ${esc(x.text)}</div><div class="who">${av(r, x.pid)}${esc(x.name)}</div></div>
       <div class="pts">+${x.pts}</div></div>`).join("")}`
@@ -667,7 +690,7 @@ document.addEventListener("click", async e => {
     if (me.name){ if (j) joinRoom(j); else createRoom(); return; }
   }
   const saved = sget("sb-room");
-  if (saved && me.name && await B.exists(saved)) enterRoom(saved);
+  if (saved && me.name && await B.exists(saved)){ joinRoom(saved); }
 })();
 </script>
 </body>
