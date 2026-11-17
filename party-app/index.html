@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ערב משחקים</title>
+<meta name="theme-color" content="#16112B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;900&family=Secular+One&family=Heebo:wght@400;700;900&display=swap">
+<style>
+/* Layout: one phone column; each game is a big tile in its own colors (cobalt for odds, tangerine for sababa) on a dark party stage. Single-theme. */
+:root{
+  color-scheme: dark;
+  --stage:#16112B; --ink:#140F2B; --paper:#FFF7E8; --muted:#B9B1D6;
+  --odds:#22398A; --sun:#FFC83D; --pink:#FF4D8D;
+  --sababa:#FF7A2F; --lemon:#FFD84A; --brown:#231407;
+  --body:"Heebo", "Arial Hebrew", system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+html{background:var(--stage)}
+body{margin:0;font-family:var(--body);color:var(--paper);background:var(--stage);
+  background-image:radial-gradient(rgba(255,255,255,.07) 2px, transparent 2.5px);background-size:24px 24px;-webkit-tap-highlight-color:transparent}
+.app{max-width:480px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:16px}
+h1{font-family:"Rubik", var(--body);font-weight:900;font-size:clamp(2.4rem, 11vw, 3.2rem);margin:0;line-height:1;text-align:center}
+h1 span{color:var(--sun)}
+.sub{text-align:center;color:var(--muted);margin-top:-6px}
+.panel{background:var(--paper);color:var(--ink);border:3px solid #000;border-radius:18px;box-shadow:0 6px 0 #000;padding:16px;display:flex;flex-direction:column;gap:10px}
+.label{font-weight:900}
+.field{width:100%;border:3px solid var(--ink);border-radius:12px;background:#fff;padding:12px 14px;font:inherit;font-size:1.05rem;color:var(--ink);outline:none}
+.field:focus{box-shadow:0 0 0 4px rgba(255,200,61,.6)}
+.code{direction:ltr;text-align:center;text-transform:uppercase;letter-spacing:.3em;font-family:"Rubik";font-weight:900;font-size:1.4rem}
+.row{display:flex;gap:10px}
+.row > *{flex:1 1 0;min-width:0}
+.btn{appearance:none;border:3px solid #000;border-radius:14px;box-shadow:0 5px 0 #000;padding:12px 16px;font:inherit;font-weight:900;font-size:1.08rem;cursor:pointer;min-height:52px;color:var(--ink);background:var(--paper)}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #000}
+.btn[disabled]{opacity:.5}
+.btn.join{background:var(--pink);color:#fff}
+.game{border:3px solid #000;border-radius:20px;box-shadow:0 7px 0 #000;padding:18px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.game h2{margin:0;font-size:2rem;line-height:1.05}
+.game p{margin:0;line-height:1.45}
+.game .meta{font-size:.85rem;font-weight:700;opacity:.85}
+.game.odds{background:var(--odds);color:#fff}
+.game.odds h2{font-family:"Rubik";font-weight:900}
+.game.odds h2 span{color:var(--sun)}
+.game.odds .btn{background:var(--sun)}
+.game.sababa{background:var(--sababa);color:var(--brown)}
+.game.sababa h2{font-family:"Secular One";font-weight:400;color:var(--paper);text-shadow:0 3px 0 var(--brown)}
+.game.sababa .btn{background:var(--lemon)}
+.game .art{position:absolute;inset-inline-start:-6px;top:10px;font-size:3.4rem;opacity:.9;transform:rotate(-10deg);pointer-events:none}
+.game h2,.game p{padding-inline-start:64px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--paper);color:var(--ink);padding:10px 18px;border-radius:999px;font-weight:700;max-width:calc(100% - 32px);text-align:center}
+:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+</style>
+</head>
+<body>
+<main class="app">
+  <h1>ערב <span>משחקים</span></h1>
+  <div class="sub">כל אחד מהטלפון שלו. קוד חדר אחד.</div>
+
+  <div class="panel">
+    <label class="label" for="name">השם שלך</label>
+    <input class="field" id="name" maxlength="14" placeholder="למשל: דניאל" autocomplete="nickname">
+    <label class="label" for="code">קיבלת קוד מחבר?</label>
+    <div class="row">
+      <input class="field code" id="code" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
+      <button class="btn join" id="joinBtn">הצטרף 🚪</button>
+    </div>
+  </div>
+
+  <section class="game odds">
+    <div class="art" aria-hidden="true">🎲</div>
+    <h2>מה ה<span>סיכויים</span>?</h2>
+    <p>שואל ומבצע בוחרים מספר בסוד. אם יוצא אותו מספר, המבצע עושה את המשימה וכולם מדרגים.</p>
+    <div class="meta">2+ שחקנים · מספרים, אתגרים ותמונות הוכחה</div>
+    <button class="btn" data-create="odds">✨ צור חדר</button>
+  </section>
+
+  <section class="game sababa">
+    <div class="art" aria-hidden="true">😤</div>
+    <h2>סבבה והכל</h2>
+    <p>נושא אחד, כל אחד משלים בסוד "סבבה והכל, אבל…", וכולם מדרגים מה הכי מצחיק.</p>
+    <div class="meta">3+ שחקנים · קיטורים, דירוגים ומלך הקיטורים</div>
+    <button class="btn" data-create="sababa">✨ צור חדר</button>
+  </section>
+</main>
+<script>
+const DB = "https://fr-game-1ebcd-default-rtdb.firebaseio.com";
+const $ = s => document.querySelector(s);
+const get = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const set = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} };
+function toast(m){ document.querySelectorAll(".toast").forEach(t => t.remove()); const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
+$("#name").value = get("odds-name") || get("sb-name") || "";
+const hashCode = (location.hash.match(/^#([A-Za-z0-9]{4})$/) || [])[1];
+if (hashCode) $("#code").value = hashCode.toUpperCase();
+$("#code").addEventListener("input", e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); });
+function saveName(){
+  const n = $("#name").value.trim().slice(0, 14);
+  if (!n){ toast("איך קוראים לך? 🙂"); $("#name").focus(); return false; }
+  set("odds-name", n); set("sb-name", n); return true;
+}
+document.querySelectorAll("[data-create]").forEach(b => b.addEventListener("click", () => {
+  if (saveName()) location.href = b.dataset.create + "/?create=1";
+}));
+async function created(path){
+  try { const r = await fetch(DB + "/rooms/" + path + "/createdAt.json"); return r.ok ? await r.json() : null; } catch(e){ return null; }
+}
+async function join(){
+  if (!saveName()) return;
+  const c = $("#code").value.trim().toUpperCase();
+  if (c.length !== 4) return toast("קוד חדר צריך להיות 4 תווים");
+  const btn = $("#joinBtn"); btn.disabled = true; btn.textContent = "מחפש…";
+  const [o, s] = await Promise.all([created(c), created("SB_" + c)]);
+  btn.disabled = false; btn.textContent = "הצטרף 🚪";
+  if (!o && !s) return toast("החדר לא נמצא, בדוק את הקוד");
+  const game = (s || 0) > (o || 0) ? "sababa" : "odds";
+  location.href = game + "/?join=" + c;
+}
+$("#joinBtn").addEventListener("click", join);
+$("#code").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
+</script>
+</body>
+</html>

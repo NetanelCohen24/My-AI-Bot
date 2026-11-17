@@ -231,6 +231,7 @@ details.help[open] summary::after{content:"－"}
   padding:10px 18px;border-radius:999px;font-family:var(--display);font-weight:700;z-index:50;max-width:calc(100% - 32px);text-align:center;animation:pop .3s}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
 .sim-banner{background:var(--sun);border:2px solid var(--ink);border-radius:12px;padding:8px 12px;font-size:.85rem;line-height:1.4}
+.hub-link{align-self:flex-start;font-weight:700;color:inherit;text-decoration:none;border:2px solid currentColor;border-radius:999px;padding:4px 12px;font-size:.9rem}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}
 }
@@ -305,6 +306,7 @@ const EMOJI = ["😐","🙂","😊","😄","😁","😆","🤭","🤣","😂","�
 
 /* =================== backends =================== */
 const FB_CONFIGURED = !!(firebaseConfig && firebaseConfig.databaseURL);
+const IN_HUB = /\/(odds|sababa)\/?$/.test(location.pathname);
 const FORCE_SIM = /[?&]sim\b/.test(location.search);
 
 function LocalBackend(){
@@ -486,7 +488,7 @@ async function leaveRoom(){
 function askName(){
   const v = ($("#nameInput")?.value || me.name || "").trim().slice(0, 14);
   if (!v){ toast("איך קוראים לך? 🙂"); $("#nameInput")?.focus(); return false; }
-  me.name = v; store.set("odds-name", v); return true;
+  me.name = v; store.set("odds-name", v); store.set("sb-name", v); return true;
 }
 
 function onRoom(){
@@ -598,6 +600,7 @@ function shareText(){ return `🎲 בואו לשחק "מה הסיכויים?"!\n
 function vHome(){
   const live = B?.kind === "firebase";
   return `
+  ${IN_HUB ? `<a class="hub-link" href="../">🏠 כל המשחקים</a>` : ""}
   <div class="hero">
     <div class="dice"><div class="die">1</div><div class="die">?</div><div class="die">10</div></div>
     <h1 class="title-xl">מה ה<span>סיכויים</span>?</h1>
@@ -951,6 +954,11 @@ document.addEventListener("click", async e => {
     } catch(e){ console.error(e); toast("לא הצלחתי להתחבר ל-Firebase, עובר למצב סימולציה", 4000); B = LocalBackend(); }
   } else B = LocalBackend();
   render();
+  const q = new URLSearchParams(location.search);
+  if (q.get("join") || q.has("create")){
+    const j = q.get("join"); try { history.replaceState(null, "", location.pathname); } catch(e){}
+    if (me.name){ if (j) joinRoom(j); else createRoom(); return; }
+  }
   const saved = sget("odds-room");
   if (saved && me.name && await B.exists(saved)) enterRoom(saved);
 })();

@@ -169,6 +169,7 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.45}
   padding:10px 18px;border-radius:999px;font-weight:700;z-index:50;max-width:calc(100% - 32px);text-align:center}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
 .sim-banner{background:var(--paper);border:2px dashed var(--ink);border-radius:12px;padding:8px 12px;font-size:.85rem;line-height:1.4}
+.hub-link{align-self:flex-start;font-weight:700;color:inherit;text-decoration:none;border:2px solid currentColor;border-radius:999px;padding:4px 12px;font-size:.9rem}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 </style>
 </head>
@@ -211,6 +212,7 @@ const RATE = ["😐","🙂","😄","🤣","💀"];
 
 /* ============ backends ============ */
 const FB_CONFIGURED = !!(firebaseConfig && firebaseConfig.databaseURL);
+const IN_HUB = /\/(odds|sababa)\/?$/.test(location.pathname);
 const FORCE_SIM = /[?&]sim\b/.test(location.search);
 const KEY = c => "SB_" + c;
 function LocalBackend(){
@@ -309,7 +311,7 @@ async function act(fn){ if (!B || !code) return false; try { return await B.tx(c
 
 /* ============ room lifecycle ============ */
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-function askName(){ const v = ($("#nameInput")?.value || me.name || "").trim().slice(0, 14); if (!v){ toast("איך קוראים לך? 🙂"); $("#nameInput")?.focus(); return false; } me.name = v; store.set("sb-name", v); return true; }
+function askName(){ const v = ($("#nameInput")?.value || me.name || "").trim().slice(0, 14); if (!v){ toast("איך קוראים לך? 🙂"); $("#nameInput")?.focus(); return false; } me.name = v; store.set("sb-name", v); store.set("odds-name", v); return true; }
 async function createRoom(){
   if (!askName()) return; ui.busy = true; render();
   let c; for (let i = 0; i < 10; i++){ c = Array.from({ length: 4 }, () => CODE_CHARS[rnd(CODE_CHARS.length)]).join(""); if (!(await B.exists(c))) break; }
@@ -414,7 +416,8 @@ const shareText = () => `😤 בואו לשחק "סבבה והכל"!\nקוד ה�
 
 function vHome(){
   const live = B?.kind === "firebase";
-  return `<div class="hero">
+  return `${IN_HUB ? `<a class="hub-link" href="../">🏠 כל המשחקים</a>` : ""}
+  <div class="hero">
     <h1 class="title-xl">סבבה והכל<small>…אבל יש לי משהו להגיד</small></h1>
     <div class="sticker">"סבבה והכל, אבל למה המזגן בעבודה תמיד על 16?"</div>
     <div class="tagline">כל סיבוב נושא חדש. כל אחד משלים "סבבה והכל, אבל…" בסוד, וכולם מדרגים מה הכי מצחיק.</div>
@@ -611,6 +614,11 @@ document.addEventListener("click", async e => {
     catch(e){ console.error(e); toast("לא הצלחתי להתחבר, עובר למצב סימולציה", 4000); B = LocalBackend(); }
   } else B = LocalBackend();
   render();
+  const q = new URLSearchParams(location.search);
+  if (q.get("join") || q.has("create")){
+    const j = q.get("join"); try { history.replaceState(null, "", location.pathname); } catch(e){}
+    if (me.name){ if (j) joinRoom(j); else createRoom(); return; }
+  }
   const saved = sget("sb-room");
   if (saved && me.name && await B.exists(saved)) enterRoom(saved);
 })();
