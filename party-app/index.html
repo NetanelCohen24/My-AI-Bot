@@ -48,6 +48,12 @@ h1 span{color:var(--sun)}
 .game.sababa{background:var(--sababa);color:var(--brown)}
 .game.sababa h2{font-family:"Secular One";font-weight:400;color:var(--paper);text-shadow:0 3px 0 var(--brown)}
 .game.sababa .btn{background:var(--lemon)}
+.game.auction{background:#0F5A3E;color:#fff}
+.game.auction h2{font-family:"Rubik";font-weight:900;color:#F5C542}
+.game.auction .btn{background:#F5C542}
+.game.likely{background:#D92E6F;color:#fff}
+.game.likely h2{font-family:"Rubik";font-weight:900}
+.game.likely .btn{background:#FFE45C}
 .game .art{position:absolute;inset-inline-start:-6px;top:10px;font-size:3.4rem;opacity:.9;transform:rotate(-10deg);pointer-events:none}
 .game h2,.game p{padding-inline-start:64px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--paper);color:var(--ink);padding:10px 18px;border-radius:999px;font-weight:700;max-width:calc(100% - 32px);text-align:center}
@@ -84,6 +90,21 @@ h1 span{color:var(--sun)}
     <div class="meta">3+ שחקנים · קיטורים, דירוגים ומלך הקיטורים</div>
     <button class="btn" data-create="sababa">✨ צור חדר</button>
   </section>
+  <section class="game auction">
+    <div class="art" aria-hidden="true">💸</div>
+    <h2>שיפוט מהיר</h2>
+    <p>סיטואציה קיצונית, וכל אחד כותב בסוד בכמה כסף הוא מוכן לעשות את זה. הכי זול צריך להסביר את עצמו.</p>
+    <div class="meta">2+ שחקנים · המכירה הפומבית</div>
+    <button class="btn" data-create="auction">✨ צור חדר</button>
+  </section>
+
+  <section class="game likely">
+    <div class="art" aria-hidden="true">👉</div>
+    <h2>הכי סביר ש…</h2>
+    <p>משפט על המסך, כל אחד מצביע בסוד על החבר שהכי מתאים. מי שמקבל הכי הרבה קולות זוכה בנקודה (או שותה).</p>
+    <div class="meta">3+ שחקנים · Most Likely To</div>
+    <button class="btn" data-create="likely">✨ צור חדר</button>
+  </section>
 </main>
 <script>
 const DB = "https://fr-game-1ebcd-default-rtdb.firebaseio.com";
@@ -111,10 +132,12 @@ async function join(){
   const c = $("#code").value.trim().toUpperCase();
   if (c.length !== 4) return toast("קוד חדר צריך להיות 4 תווים");
   const btn = $("#joinBtn"); btn.disabled = true; btn.textContent = "מחפש…";
-  const [o, s] = await Promise.all([created(c), created("SB_" + c)]);
+  const games = { odds: "", sababa: "SB_", auction: "AU_", likely: "ML_" };
+  const found = await Promise.all(Object.entries(games).map(async ([g, pre]) => [g, await created(pre + c)]));
   btn.disabled = false; btn.textContent = "הצטרף 🚪";
-  if (!o && !s) return toast("החדר לא נמצא, בדוק את הקוד");
-  const game = (s || 0) > (o || 0) ? "sababa" : "odds";
+  const best = found.filter(([, t]) => t).sort((a, b) => b[1] - a[1])[0];
+  if (!best) return toast("החדר לא נמצא, בדוק את הקוד");
+  const game = best[0];
   location.href = game + "/?join=" + c;
 }
 $("#joinBtn").addEventListener("click", join);
