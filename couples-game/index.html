@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>הכר את בת הזוג</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#7A1631">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Heebo:wght@400;500;700;900&display=swap">
+<script>
+/* Same Firebase project as the other games. Rooms live under rooms/KP_XXXX. */
+const firebaseConfig = {
+  apiKey: "AIzaSyDWqB4znTHo5YnaMA5VivT9fhq7HQH6NpA",
+  authDomain: "fr-game-1ebcd.firebaseapp.com",
+  databaseURL: "https://fr-game-1ebcd-default-rtdb.firebaseio.com",
+  projectId: "fr-game-1ebcd",
+  storageBucket: "fr-game-1ebcd.firebasestorage.app",
+  messagingSenderId: "929442656248",
+  appId: "1:929442656248:web:b012bacf8aa7d91f7cf00d"
+};
+</script>
+<style>
+/* Layout: one phone column on a wine-red stage; each couple is a paired card with a heart seam; answers are big option tiles.
+   Deliberately single-theme. */
+:root{
+  color-scheme: light;
+  --stage:#7A1631; --stage-2:#8F1D3B; --ink:#1E0910; --paper:#FFF5EE; --paper-2:#F7DED3; --muted:#7D5A60;
+  --peach:#FFB38A; --gold:#FFD25E; --rose:#FF5C8A; --mint:#3FD9A4; --sky:#6BC6FF; --on-stage:#FFFFFF; --bad:#FF6B6B;
+  --display:"Rubik", "Heebo", "Arial Hebrew", system-ui, sans-serif;
+  --body:"Heebo", "Arial Hebrew", system-ui, sans-serif;
+  --r:18px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+html{background:var(--stage)}
+body{margin:0;font-family:var(--body);font-size:16px;color:var(--ink);background-color:var(--stage);
+  background-image:radial-gradient(rgba(255,255,255,.07) 2px, transparent 2.5px);background-size:24px 24px;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+.app{max-width:480px;margin:0 auto;min-height:100%;padding-block:14px 40px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.topbar{display:flex;align-items:center;gap:8px;color:var(--on-stage)}
+.logo-sm{font-family:var(--display);font-weight:900;font-size:1.1rem;white-space:nowrap}
+.spacer{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:999px;padding:4px 10px;
+  font-family:var(--display);font-weight:800;font-size:.85rem;box-shadow:0 3px 0 var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip.code{direction:ltr;letter-spacing:.12em;background:var(--gold)}
+.chip.ghost{background:transparent;color:var(--on-stage);border-color:rgba(255,255,255,.55);box-shadow:none;cursor:pointer}
+.hub-link{align-self:flex-start;font-weight:700;color:var(--on-stage);text-decoration:none;border:2px solid currentColor;border-radius:999px;padding:4px 12px;font-size:.9rem}
+.card{background:var(--paper);border:3px solid var(--ink);border-radius:var(--r);box-shadow:0 6px 0 var(--ink);padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card.center{align-items:center;text-align:center}
+.eyebrow{font-family:var(--display);font-weight:800;font-size:.78rem;letter-spacing:.08em;color:var(--muted)}
+.label{font-family:var(--display);font-weight:800}
+.muted{color:var(--muted)} .small{font-size:.88rem}
+.btn{appearance:none;border:3px solid var(--ink);border-radius:14px;box-shadow:0 5px 0 var(--ink);background:var(--paper);padding:13px 16px;
+  font-family:var(--display);font-weight:800;font-size:1.08rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:var(--ink);
+  transition:transform .08s, box-shadow .08s;user-select:none;min-height:52px}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none;box-shadow:0 5px 0 var(--ink)}
+.btn.big{font-size:1.3rem;min-height:62px} .btn.block{width:100%}
+.btn.small{font-size:.92rem;padding:8px 12px;min-height:40px;box-shadow:0 3px 0 var(--ink);border-width:2px}
+.btn.gold{background:var(--gold)} .btn.rose{background:var(--rose);color:#fff} .btn.wa{background:#25D366} .btn.dark{background:var(--ink);color:var(--gold)}
+.row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.row > *{flex:1 1 0;min-width:0}
+input.field{width:100%;border:3px solid var(--ink);border-radius:12px;background:#fff;padding:12px 14px;font-size:1.05rem;outline:none}
+input.field:focus{box-shadow:0 0 0 4px rgba(255,210,94,.6)}
+.code-input{direction:ltr;text-align:center;text-transform:uppercase;letter-spacing:.3em;font-family:var(--display)!important;font-weight:800;font-size:1.4rem!important}
+.hero{color:var(--on-stage);text-align:center;padding-block:14px 4px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.hero .icon{font-size:3.4rem;line-height:1;filter:drop-shadow(0 4px 0 var(--ink))}
+.title-xl{font-family:var(--display);font-weight:900;font-size:clamp(2.2rem, 10vw, 3.1rem);line-height:1.02;text-shadow:0 4px 0 var(--ink)}
+.title-xl span{color:var(--peach)}
+.tagline{max-width:32ch;opacity:.95}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-family:var(--display);font-weight:700;font-size:.9rem}
+.or::before,.or::after{content:"";flex:1;height:2px;background:var(--paper-2)}
+.mode-pill{align-self:center;display:inline-flex;gap:8px;align-items:center;color:var(--on-stage);font-size:.9rem;border:2px dashed rgba(255,255,255,.5);border-radius:999px;padding:6px 14px}
+.mode-pill .dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
+.mode-pill.live .dot{background:var(--mint)}
+.how{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;counter-reset:s}
+.how li{display:grid;grid-template-columns:30px 1fr;gap:10px;line-height:1.45}
+.how li::before{counter-increment:s;content:counter(s);width:28px;height:28px;border:2px solid var(--ink);border-radius:8px;background:var(--peach);display:grid;place-items:center;font-weight:900}
+.bigcode{direction:ltr;font-family:var(--display);font-weight:900;font-size:3.6rem;letter-spacing:.18em;line-height:1;padding-inline-start:.18em}
+.share-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.players{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.player{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--ink);border-radius:14px;padding:8px 10px}
+.player.off{opacity:.45}
+.player .name{font-family:var(--display);font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player .tag{font-size:.75rem;font-weight:700;background:var(--paper-2);border-radius:999px;padding:2px 8px}
+.x{border:none;background:none;font-size:1.1rem;cursor:pointer;color:var(--muted);padding:4px 6px}
+.av{width:40px;height:40px;flex:0 0 auto;border-radius:12px;border:2px solid var(--ink);display:grid;place-items:center;font-size:1.35rem}
+.av.lg{width:58px;height:58px;font-size:1.9rem;border-radius:16px;border-width:3px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{flex:1 1 0;min-width:56px;border:2px solid var(--ink);border-radius:12px;background:#fff;padding:10px 6px;font-family:var(--display);font-weight:800;cursor:pointer}
+.seg button.on{background:var(--ink);color:var(--gold)}
+.partners{display:flex;flex-wrap:wrap;gap:8px}
+.partners button{display:flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:999px;background:#fff;padding:4px 12px 4px 4px;cursor:pointer;font-family:var(--display);font-weight:700}
+.partners button .av{width:30px;height:30px;font-size:1rem;border-radius:50%}
+.partners button.on{background:var(--rose);color:#fff}
+.couple{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;background:#fff;border:2px solid var(--ink);border-radius:16px;padding:8px 10px}
+.couple .side{display:flex;align-items:center;gap:8px;min-width:0}
+.couple .side:last-child{flex-direction:row-reverse;text-align:left}
+.couple .nm{font-family:var(--display);font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.couple .heart{font-size:1.4rem}
+.couple .pts{font-family:var(--display);font-weight:900}
+.waiting{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--on-stage);font-family:var(--display);font-weight:700;text-align:center;padding:10px;flex-wrap:wrap}
+.dots span{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;margin-inline:2px;animation:dot 1s infinite}
+.dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+@keyframes dot{50%{transform:translateY(-6px);opacity:.4}}
+.role{align-self:center;font-family:var(--display);font-weight:900;padding:8px 18px;border:3px solid var(--ink);border-radius:999px;box-shadow:0 4px 0 var(--ink);background:var(--peach)}
+.role.guess{background:var(--sky)} .role.who{background:var(--gold)}
+.question{background:var(--ink);color:var(--paper);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:8px;box-shadow:0 6px 0 rgba(0,0,0,.3);animation:drop .5s cubic-bezier(.3,1.5,.5,1) both}
+.question .eyebrow{color:var(--peach)}
+.question .t{font-family:var(--display);font-weight:800;font-size:1.5rem;line-height:1.3;overflow-wrap:anywhere}
+@keyframes drop{from{transform:translateY(-24px) scale(.94);opacity:0}}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opts button{border:3px solid var(--ink);border-radius:16px;box-shadow:0 4px 0 var(--ink);padding:16px 8px;font-family:var(--display);font-weight:800;font-size:1.05rem;cursor:pointer;min-height:76px;line-height:1.25;color:var(--ink)}
+.opts button:nth-child(1){background:var(--peach)} .opts button:nth-child(2){background:var(--sky)} .opts button:nth-child(3){background:var(--gold)} .opts button:nth-child(4){background:var(--mint)}
+.opts button.on{background:var(--ink)!important;color:var(--gold);transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.locked{font-family:var(--display);font-weight:900;font-size:1.5rem}
+.done-list{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.pill{display:flex;align-items:center;gap:6px;background:#fff;border:2px solid var(--ink);border-radius:999px;padding:3px 10px 3px 3px;font-weight:700;font-size:.9rem}
+.pill .av{width:28px;height:28px;font-size:.95rem;border-radius:50%}
+.pill.ok{background:var(--mint)}
+.countdown{font-family:var(--display);font-weight:900;font-size:9rem;line-height:1;color:var(--gold);text-shadow:0 8px 0 var(--ink);text-align:center;padding-block:20px}
+.countdown.tick{animation:tick .9s ease-out}
+@keyframes tick{0%{transform:scale(1.8);opacity:0}30%{transform:scale(1);opacity:1}}
+.result{border:3px solid var(--ink);border-radius:var(--r);box-shadow:0 6px 0 var(--ink);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--paper);animation:pop .5s cubic-bezier(.3,1.5,.5,1) both}
+.result.match{background:#DFFBEF} .result.miss{background:#FFE6E6}
+.result .head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--display);font-weight:900}
+.result .verdict{font-size:1.3rem}
+.ans{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center}
+.ans .who{font-size:.85rem;font-weight:700;color:var(--muted)}
+.ans .what{font-family:var(--display);font-weight:800;font-size:1.1rem;overflow-wrap:anywhere}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+.board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.board li{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;background:#fff;border:2px solid var(--ink);border-radius:14px;padding:8px 10px}
+.board li.me{background:var(--paper-2)}
+.board .rk{font-family:var(--display);font-weight:900;text-align:center}
+.board .nm{font-family:var(--display);font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board .pt{font-family:var(--display);font-weight:900;font-variant-numeric:tabular-nums;direction:ltr;white-space:nowrap}
+.crown{font-size:3rem;animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{50%{translate:0 -6px}}
+.king{font-family:var(--display);font-weight:900;font-size:1.8rem}
+.host-tools{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);
+  padding:10px 18px;border-radius:999px;font-family:var(--display);font-weight:700;z-index:50;max-width:calc(100% - 32px);text-align:center}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
+.sim-banner{background:var(--paper);border:2px dashed var(--ink);border-radius:12px;padding:8px 12px;font-size:.85rem;line-height:1.4}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<canvas id="confetti" hidden></canvas>
+<script>
+/* ============ utils ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clone = o => o == null ? o : JSON.parse(JSON.stringify(o));
+const rnd = n => Math.floor(Math.random() * n);
+const pick = a => a[rnd(a.length)];
+const store = { get(k, s = localStorage){ try { return s.getItem(k); } catch(e){ return null; } }, set(k, v, s = localStorage){ try { s.setItem(k, v); } catch(e){} }, del(k, s = localStorage){ try { s.removeItem(k); } catch(e){} } };
+const SS = (() => { try { return sessionStorage; } catch(e){ return null; } })();
+const sget = k => SS ? store.get(k, SS) : null, sset = (k, v) => SS && store.set(k, v, SS), sdel = k => SS && store.del(k, SS);
+const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+function toast(msg, ms = 2400){ document.querySelectorAll(".toast").forEach(t => t.remove()); const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), ms); }
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+
+/* ============ content ============
+   "know" questions: one partner answers about themselves (s), the other guesses (o, {N} = the partner's name).
+   "who" questions: both partners pick one of the two of them, and we check if they agree. */
+const AVATARS = ["🦊","🐸","🐼","🦄","🐙","🐯","🐵","🐧","🦁","🐨","🐷","🐲","🦖","🐝"];
+const AV_COLORS = ["#FF5C8A","#6BC6FF","#FFD25E","#3FD9A4","#B38CFF","#FFB38A","#7EE0FF","#FFA3C7"];
+const BOT_NAMES = ["נועה","איתי","שירה","עומר","מאיה","יונתן","תמר","רועי"];
+const KNOW = [
+  { s: "מה הכי בא לך לאכול עכשיו?", o: "מה הכי בא ל{N} לאכול עכשיו?", a: ["פיצה", "סושי", "שווארמה", "משהו מתוק"] },
+  { s: "איפה החופשה החלומית שלך?", o: "איפה החופשה החלומית של {N}?", a: ["חוף בתאילנד", "סקי באלפים", "עיר באירופה", "צימר בצפון"] },
+  { s: "מה הדבר הראשון שאת/ה עושה בבוקר?", o: "מה הדבר הראשון ש{N} עושה בבוקר?", a: ["בודק/ת טלפון", "שותה קפה", "נכנס/ת למקלחת", "עוד 5 דקות בנודניק"] },
+  { s: "מה הכי מעצבן אותך?", o: "מה הכי מעצבן את {N}?", a: ["אנשים שמאחרים", "לעיסה בקול", "פקקים", "כשלא עונים להודעות"] },
+  { s: "מה הערב המושלם בשבילך?", o: "מה הערב המושלם בשביל {N}?", a: ["מסעדה טובה", "סרט מתחת לשמיכה", "מסיבה עם חברים", "טיול לילי"] },
+  { s: "איזה כוח-על היית רוצה?", o: "איזה כוח-על {N} היה/הייתה רוצה?", a: ["לעוף", "להיות בלתי נראה/ית", "לקרוא מחשבות", "טלפורטציה"] },
+  { s: "מה הקינוח האהוב עליך?", o: "מה הקינוח האהוב על {N}?", a: ["שוקולד", "גלידה", "עוגת גבינה", "פירות"] },
+  { s: "מה את/ה עושה כשאת/ה עצבני/ת?", o: "מה {N} עושה כש{N} עצבני/ת?", a: ["שותק/ת", "מתפרץ/ת", "אוכל/ת", "הולך/ת לישון"] },
+  { s: "איזה סוג סדרות את/ה הכי אוהב/ת?", o: "איזה סוג סדרות {N} הכי אוהב/ת?", a: ["קומדיה", "מתח ואימה", "ריאליטי", "דוקו"] },
+  { s: "מה היית עושה עם מיליון שקל?", o: "מה {N} היה/הייתה עושה עם מיליון שקל?", a: ["קונה דירה", "טיול סביב העולם", "משקיע/ה הכל", "אוטו חלומי"] },
+  { s: "ממה את/ה הכי מפחד/ת?", o: "ממה {N} הכי מפחד/ת?", a: ["ג'וקים", "גבהים", "חושך", "לדבר מול קהל"] },
+  { s: "מה המשקה שלך?", o: "מה המשקה של {N}?", a: ["קפה", "תה", "בירה", "יין או קוקטייל"] },
+  { s: "איזו מתנה הכי תשמח אותך?", o: "איזו מתנה הכי תשמח את {N}?", a: ["תכשיט או שעון", "חוויה או טיול", "משהו שהכנו לבד", "גאדג'ט"] },
+  { s: "איזו חיה הכי מתאימה לך?", o: "איזו חיה הכי מתאימה ל{N}?", a: ["חתול", "כלב", "עצלן", "אריה"] },
+  { s: "איך את/ה בנהיגה?", o: "איך {N} בנהיגה?", a: ["רגוע/ה", "עצבני/ת על כולם", "שר/ה בקול", "מעדיף/ה שמישהו אחר ינהג"] },
+  { s: "איזה מטבח את/ה הכי אוהב/ת?", o: "איזה מטבח {N} הכי אוהב/ת?", a: ["איטלקי", "אסיאתי", "מזרחי", "המבורגרים"] },
+  { s: "מה הכי חשוב לך בבית?", o: "מה הכי חשוב ל{N} בבית?", a: ["ספה נוחה", "מטבח גדול", "מרפסת", "מיטה ענקית"] },
+  { s: "מה הריח האהוב עליך?", o: "מה הריח האהוב על {N}?", a: ["קפה טרי", "ים", "עוגה בתנור", "בושם"] },
+  { s: "מה עבודת החלומות שלך?", o: "מה עבודת החלומות של {N}?", a: ["שחקן/ית", "טייס/ת", "שף/ית", "עשיר/ה בלי לעבוד"] },
+  { s: "מה את/ה עושה כשאת/ה לבד בבית?", o: "מה {N} עושה לבד בבית?", a: ["נטפליקס", "מנקה ומסדר/ת", "ישן/ה", "אוכל/ת"] },
+  { s: "מה היית לוקח/ת לאי בודד?", o: "מה {N} היה/הייתה לוקח/ת לאי בודד?", a: ["טלפון", "ספר", "את בן/בת הזוג", "סכין"] },
+  { s: "מה העונה האהובה עליך?", o: "מה העונה האהובה על {N}?", a: ["קיץ", "חורף", "אביב", "סתיו"] },
+  { s: "איזו מוזיקה מתנגנת לך באוטו?", o: "איזו מוזיקה מתנגנת ל{N} באוטו?", a: ["מזרחית", "פופ", "היפ הופ", "רוק"] },
+  { s: "כמה זמן לוקח לך להתארגן ליציאה?", o: "כמה זמן לוקח ל{N} להתארגן ליציאה?", a: ["5 דקות", "רבע שעה", "חצי שעה", "שעה ויותר"] },
+  { s: "מה הכי טעים לך בארוחת שישי?", o: "מה הכי טעים ל{N} בארוחת שישי?", a: ["חמין", "שניצל", "קוסקוס", "מזמינים בחוץ"] },
+  { s: "מה הכי מרגיע אותך?", o: "מה הכי מרגיע את {N}?", a: ["מקלחת חמה", "מוזיקה", "לדבר עם מישהו", "ספורט"] },
+  { s: "מה את/ה הכי לא מסוגל/ת לוותר עליו?", o: "על מה {N} הכי לא מסוגל/ת לוותר?", a: ["הטלפון", "הקפה", "השינה", "האוכל"] },
+  { s: "מה הסטייל שלך בבית?", o: "מה הסטייל של {N} בבית?", a: ["פיג'מה", "טרנינג", "הלבוש של היום", "מה שנמצא על הכיסא"] },
+];
+const WHO = [
+  "מי מכם יותר מאחר?","מי מכם נרדם ראשון באמצע סרט?","מי מכם יותר רומנטי?","מי מכם מבזבז יותר כסף?",
+  "מי מכם אמר 'אני אוהב/ת אותך' ראשון?","מי מכם יותר מבולגן?","מי מכם נשאר יותר זמן במקלחת?","מי מכם יותר קנאי?",
+  "מי מכם יותר מצחיק?","מי מכם מנצח בוויכוחים?","מי מכם שולט בשלט?","מי מכם מבשל יותר טוב?","מי מכם מתנצל ראשון אחרי ריב?",
+  "מי מכם יותר דרמטי כשהוא חולה?"
+];
+
+/* ============ backends ============ */
+const FB_CONFIGURED = !!(firebaseConfig && firebaseConfig.databaseURL);
+const FORCE_SIM = /[?&]sim\b/.test(location.search);
+const IN_HUB = /\/couples\/?$/.test(location.pathname);
+const KEY = c => "KP_" + c;
+function LocalBackend(){
+  const mem = {}, subs = {}; const K = c => "couples-sim:" + c;
+  const read = key => { if (key in mem) return clone(mem[key]); const raw = store.get(key); if (raw == null) return null; try { mem[key] = JSON.parse(raw); return clone(mem[key]); } catch(e){ return null; } };
+  const emit = key => { const v = read(key); (subs[key] || []).forEach(cb => cb(clone(v))); };
+  const write = (key, val) => { mem[key] = clone(val); if (val == null) store.del(key); else store.set(key, JSON.stringify(val)); emit(key); };
+  addEventListener("storage", e => { if (!e.key || !subs[e.key]) return; try { mem[e.key] = e.newValue == null ? null : JSON.parse(e.newValue); } catch(err){} emit(e.key); });
+  return { kind: "sim", now: () => Date.now(), exists: async c => !!read(K(c)), create: async (c, d) => write(K(c), d),
+    watch(c, cb){ const k = K(c); (subs[k] ||= []).push(cb); setTimeout(() => cb(read(k)), 0); return () => { subs[k] = subs[k].filter(f => f !== cb); }; },
+    tx: async (c, fn) => { const cur = read(K(c)); if (!cur) return false; if (fn(cur) === false) return false; write(K(c), cur); return true; },
+    presence(){ return null; } };
+}
+/* presence: marks me online/offline without ever creating a nameless "ghost" player */
+function fbPresence(db, path){
+  const pref = db.ref(path), con = db.ref(".info/connected");
+  const h = s => { if (!s.val()) return; pref.child("online").onDisconnect().set(false);
+    pref.child("name").get().then(n => { if (n.exists()) pref.child("online").set(true); }).catch(() => {}); };
+  con.on("value", h);
+  return () => { con.off("value", h); pref.child("online").onDisconnect().cancel(); };
+}
+function FirebaseBackend(){
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database(); let offset = 0;
+  db.ref(".info/serverTimeOffset").on("value", s => { offset = s.val() || 0; });
+  const ref = c => db.ref("rooms/" + KEY(c));
+  return { kind: "firebase", now: () => Date.now() + offset,
+    exists: async c => (await db.ref("rooms/" + KEY(c) + "/createdAt").get()).exists(),
+    create: (c, d) => ref(c).set(d),
+    watch(c, cb){ const r = ref(c), h = s => cb(s.val()); r.on("value", h); return () => r.off("value", h); },
+    async tx(c, fn){ const res = await ref(c).transaction(cur => { if (cur === null) return null; return fn(cur) === false ? undefined : cur; }); return res.committed && res.snapshot.exists(); },
+    presence: (c, pid) => fbPresence(db, "rooms/" + KEY(c) + "/players/" + pid) };
+}
+
+/* ============ state ============ */
+let stopPresence = null, B = null, code = null, room = null, unwatch = null, loaded = false;
+const me = { pid: sget("kp-pid") || uid(), name: store.get("sb-name") || store.get("odds-name") || "" };
+sset("kp-pid", me.pid);
+const ui = { choice: null, phaseKey: "", busy: false, qKey: "", q: "" };
+
+/* ============ helpers ============ */
+const playersOf = r => Object.entries(r?.players || {}).filter(([, p]) => p && p.name).map(([id, p]) => ({ id, ...p })).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+const onlinePlayers = r => playersOf(r).filter(p => p.online !== false);
+const hostOf = r => onlinePlayers(r).filter(p => !p.isBot)[0]?.id || r?.hostPid;
+const isHost = () => room && hostOf(room) === me.pid;
+const P = (r, id) => (r?.players || {})[id];
+const nameOf = (r, id) => P(r, id)?.name || "?";
+function av(r, id, cls = ""){ const p = P(r, id) || {}; const a = Number.isInteger(p.avatar) ? p.avatar : 0;
+  return `<div class="av ${cls}" style="background:${AV_COLORS[a % AV_COLORS.length]}">${AVATARS[a % AVATARS.length]}</div>`; }
+const dots = `<span class="dots"><span></span><span></span><span></span></span>`;
+const roundsOf = r => r.settings?.rounds || 8;
+/* couples from mutual partner picks (lobby), or the frozen list once the game started */
+function pairsFromPlayers(r){
+  const ps = playersOf(r), seen = new Set(), out = [];
+  ps.forEach(p => { const q = P(r, p.partner); if (q && q.name && q.partner === p.id && !seen.has(p.id)){ seen.add(p.id); seen.add(p.partner); out.push([p.id, p.partner]); } });
+  return out;
+}
+const couplesOf = r => (r.couples && r.couples.length ? r.couples : pairsFromPlayers(r)).filter(c => P(r, c[0])?.name && P(r, c[1])?.name);
+const coupleOf = (r, pid) => couplesOf(r).find(c => c.includes(pid));
+const partnerOf = (r, pid) => { const c = coupleOf(r, pid); return c ? (c[0] === pid ? c[1] : c[0]) : null; };
+const ckey = c => c.join("|");
+/* in "know" rounds one partner is the subject; it alternates every round */
+const subjectOf = (r, c) => c[(r.round + couplesOf(r).indexOf(c)) % 2];
+const players_in_play = r => couplesOf(r).flat().filter(id => P(r, id)?.online !== false);
+const pendingOf = r => players_in_play(r).filter(id => (r.answers || {})[id] == null);
+
+/* ============ mutations (inside tx) ============ */
+function makeQuestion(r){
+  const used = new Set(r.usedQ || []);
+  const useWho = Math.random() < .3;
+  const pool = useWho ? WHO.map((t, i) => "w" + i) : KNOW.map((q, i) => "k" + i);
+  const free = pool.filter(x => !used.has(x)); const id = pick(free.length ? free : pool);
+  r.usedQ = [...used, id].slice(-35); r.q = id;
+}
+function newRound(r){
+  r.round = (r.round || 0) + 1; r.answers = null; r.result = null; r.countdownAt = null;
+  if (r.round > roundsOf(r)){ r.phase = "final"; return; }
+  makeQuestion(r); r.phase = "answer";
+}
+function maybeCountdown(r, now){ if (r.phase === "answer" && Object.keys(r.answers || {}).length && !pendingOf(r).length){ r.phase = "countdown"; r.countdownAt = now + 500; } }
+function finishRound(r){
+  const ans = r.answers || {}; r.cscore = r.cscore || {};
+  r.result = couplesOf(r).map(c => {
+    const [a, b] = c; const va = ans[a], vb = ans[b];
+    const match = va != null && vb != null && String(va) === String(vb);
+    if (match){ r.cscore[ckey(c)] = (r.cscore[ckey(c)] || 0) + 1; c.forEach(id => { if (r.players[id]) r.players[id].score = (r.players[id].score || 0) + 1; }); }
+    return { c, match, subject: r.q[0] === "k" ? subjectOf(r, c) : null };
+  });
+  r.phase = "reveal";
+}
+const A = {
+  partner: (pid, other) => r => { if (r.phase !== "lobby") return false; const ps = r.players || {};
+    const old = ps[pid]?.partner; if (old && ps[old]?.partner === pid) ps[old].partner = null;
+    if (other){ const theirs = ps[other]?.partner; if (theirs && ps[theirs]?.partner === other) ps[theirs].partner = null; ps[other].partner = pid; }
+    ps[pid].partner = other || null; },
+  start: r => { if (!["lobby", "final"].includes(r.phase)) return false; const cs = pairsFromPlayers(r); if (!cs.length) return false;
+    r.couples = cs; r.cscore = {}; Object.values(r.players || {}).forEach(p => { if (p) p.score = 0; }); r.round = 0; newRound(r); },
+  swap: r => { if (r.phase !== "answer") return false; r.answers = null; makeQuestion(r); r.swaps = (r.swaps || 0) + 1; },
+  answer: (pid, v, now) => r => { if (r.phase !== "answer") return false; r.answers = r.answers || {}; r.answers[pid] = v; maybeCountdown(r, now); },
+  close: now => r => { if (r.phase !== "answer" || !Object.keys(r.answers || {}).length) return false; r.phase = "countdown"; r.countdownAt = now + 500; },
+  reveal: r => { if (r.phase !== "countdown") return false; finishRound(r); },
+  next: r => { if (r.phase !== "reveal") return false; newRound(r); },
+  toLobby: r => { r.phase = "lobby"; r.round = 0; r.answers = r.result = null; r.couples = null; },
+};
+async function act(fn){ if (!B || !code) return false; try { return await B.tx(code, fn); } catch(e){ console.error(e); toast("שגיאת חיבור, נסה שוב"); return false; } }
+
+/* ============ room lifecycle ============ */
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function askName(){ const v = ($("#nameInput")?.value || me.name || "").trim().slice(0, 14); if (!v){ toast("איך קוראים לך? 🙂"); $("#nameInput")?.focus(); return false; }
+  me.name = v; store.set("sb-name", v); store.set("odds-name", v); return true; }
+async function createRoom(){
+  if (!askName()) return; ui.busy = true; render();
+  let c; for (let i = 0; i < 10; i++){ c = Array.from({ length: 4 }, () => CODE_CHARS[rnd(CODE_CHARS.length)]).join(""); if (!(await B.exists(c))) break; }
+  const now = B.now();
+  await B.create(c, { game: "couples", createdAt: now, hostPid: me.pid, phase: "lobby", round: 0, settings: { rounds: 8 },
+    players: { [me.pid]: { name: me.name, score: 0, joinedAt: now, online: true, avatar: rnd(AVATARS.length) } } });
+  ui.busy = false; enterRoom(c);
+}
+async function joinRoom(c){
+  if (!askName()) return;
+  c = (c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (c.length !== 4) return toast("קוד חדר צריך להיות 4 תווים");
+  ui.busy = true; render();
+  if (!(await B.exists(c))){ ui.busy = false; render(); return toast("החדר לא נמצא, בדוק את הקוד"); }
+  const now = B.now();
+  const ok = await B.tx(c, r => {
+    r.players = r.players || {};
+    for (const [id, p] of Object.entries(r.players)) if (!p || !p.name) delete r.players[id];
+    const mine = r.players[me.pid];
+    if (mine && Number.isInteger(mine.avatar)){ mine.name = me.name; mine.online = true; return; }
+    if (Object.keys(r.players).length >= 16) return false;
+    const used = new Set(Object.values(r.players).map(p => p.avatar)); let a = rnd(AVATARS.length);
+    for (let i = 0; i < AVATARS.length && used.has(a); i++) a = (a + 1) % AVATARS.length;
+    r.players[me.pid] = { name: me.name, score: 0, joinedAt: now, online: true, avatar: a };
+  });
+  ui.busy = false; if (!ok){ render(); return toast("החדר מלא"); }
+  enterRoom(c);
+}
+function enterRoom(c){
+  code = c; loaded = false; room = null; sset("kp-room", c);
+  try { history.replaceState(null, "", location.pathname + location.search + "#" + c); } catch(e){}
+  unwatch?.(); unwatch = B.watch(c, v => { loaded = true; room = v; onRoom(); });
+  stopPresence?.(); stopPresence = B.presence(c, me.pid); render();
+}
+async function leaveRoom(){
+  if (code) await act(r => { if (!r.players?.[me.pid]) return false; if (r.phase === "lobby"){ const pt = r.players[me.pid].partner; if (pt && r.players[pt]) r.players[pt].partner = null; delete r.players[me.pid]; } else r.players[me.pid].online = false; });
+  unwatch?.(); unwatch = null; stopPresence?.(); stopPresence = null; code = null; room = null; sdel("kp-room");
+  try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
+  stopConfetti(); render();
+}
+function onRoom(){
+  if (room && !room.players?.[me.pid]?.name){ toast("יצאת מהחדר"); leaveRoom(); return; }
+  if (room){
+    const k = room.phase + ":" + room.round;
+    if (room.phase === "answer" && ui.qKey === k && ui.q && ui.q !== room.q) toast("🔄 שאלה חדשה!");
+    ui.qKey = k; ui.q = room.q;
+    if (k !== ui.phaseKey){ ui.phaseKey = k; ui.choice = null; window.scrollTo({ top: 0, behavior: "smooth" }); if (room.phase !== "final") stopConfetti();
+      if (room.phase === "reveal") try { navigator.vibrate?.([120, 60, 220]); } catch(e){} }
+    if (room.phase === "final") startConfetti();
+  }
+  render(); driveBots();
+}
+
+/* ============ bots (driven by the host's phone) ============ */
+const botTimers = new Set();
+function botLater(key, ms, fn){ if (botTimers.has(key)) return; botTimers.add(key); setTimeout(fn, ms); }
+function driveBots(){
+  const r = room; if (!r || !isHost()) return;
+  if (r.phase === "lobby"){ // a bot left alone pairs itself with another lonely bot
+    return;
+  }
+  if (r.phase !== "answer") return;
+  const k = r.round + ":" + (r.swaps || 0) + ":" + r.q;
+  pendingOf(r).filter(id => P(r, id)?.isBot).forEach(id => botLater(k + id, 1500 + rnd(3500), () => {
+    const rr = room; const c = coupleOf(rr, id); if (!c) return;
+    let v; if (rr.q[0] === "w") v = pick(c); else v = rnd(4);
+    // a bot partner "knows" its human a little: 45% of the time it copies the human's answer when there is one
+    const other = partnerOf(rr, id), hv = (rr.answers || {})[other];
+    if (hv != null && Math.random() < .45) v = hv;
+    act(A.answer(id, v, B.now()));
+  }));
+}
+/* adds one bot as my partner, or a ready-made couple of two bots */
+async function addBot(asMyPartner){
+  const now = B.now(); const ids = asMyPartner ? ["bot_" + uid()] : ["bot_" + uid(), "bot_" + uid()];
+  await act(r => {
+    const ps = Object.values(r.players || {}).filter(p => p && p.name); if (ps.length + ids.length > 16) return false;
+    const names = new Set(ps.map(p => p.name)); const used = new Set(ps.map(p => p.avatar));
+    ids.forEach(id => { let a = rnd(AVATARS.length); for (let i = 0; i < AVATARS.length && used.has(a); i++) a = (a + 1) % AVATARS.length; used.add(a);
+      const name = BOT_NAMES.find(n => !names.has(n)) || "בוט"; names.add(name);
+      r.players[id] = { name, score: 0, joinedAt: now, online: true, avatar: a, isBot: true }; });
+    if (ids.length === 2){ r.players[ids[0]].partner = ids[1]; r.players[ids[1]].partner = ids[0]; }
+  });
+  if (asMyPartner) await act(A.partner(me.pid, ids[0]));
+}
+
+/* ============ ticker ============ */
+let revealAsked = "";
+setInterval(() => {
+  if (!room || !B) return;
+  if (room.phase === "countdown"){
+    const left = room.countdownAt + 3000 - B.now(); const el = $("#cd"); const n = Math.max(1, Math.ceil(left / 1000));
+    if (el && el.textContent !== String(n)){ el.textContent = n; el.classList.remove("tick"); void el.offsetWidth; el.classList.add("tick"); try { navigator.vibrate?.(50); } catch(e){} }
+    const k = room.round + ":" + room.countdownAt; if (left <= 0 && revealAsked !== k){ revealAsked = k; act(A.reveal); }
+  }
+  if (room.phase === "answer" && isHost() && Object.keys(room.answers || {}).length && !pendingOf(room).length) act(r => { maybeCountdown(r, B.now()); if (r.phase !== "countdown") return false; });
+}, 150);
+
+/* ============ confetti ============ */
+let confRAF = null;
+function startConfetti(){
+  if (confRAF || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const cv = $("#confetti"); cv.hidden = false; const ctx = cv.getContext("2d"); cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
+  const cols = ["#FF5C8A","#FFD25E","#FFB38A","#FFF5EE","#3FD9A4"];
+  const ps = Array.from({ length: 150 }, () => ({ x: Math.random() * cv.width, y: -Math.random() * cv.height, w: 6 + Math.random() * 8, h: 10 + Math.random() * 10, vy: 2 + Math.random() * 3, vx: -1 + Math.random() * 2, r: Math.random() * 6, vr: -.1 + Math.random() * .2, c: pick(cols) }));
+  const t0 = performance.now();
+  const step = t => { ctx.clearRect(0, 0, cv.width, cv.height); const d = devicePixelRatio, live = t - t0 < 7000;
+    ps.forEach(p => { p.y += p.vy * d; p.x += p.vx * d; p.r += p.vr; if (p.y > cv.height && live){ p.y = -20; p.x = Math.random() * cv.width; }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w * d / 2, -p.h * d / 2, p.w * d, p.h * d); ctx.restore(); });
+    if (live || ps.some(p => p.y < cv.height)) confRAF = requestAnimationFrame(step); else stopConfetti(); };
+  confRAF = requestAnimationFrame(step);
+}
+function stopConfetti(){ if (confRAF) cancelAnimationFrame(confRAF); confRAF = null; const cv = $("#confetti"); if (cv) cv.hidden = true; }
+
+/* ============ views ============ */
+const shareLink = () => location.href.split("#")[0] + "#" + code;
+const shareText = () => `💑 בואו לשחק "הכר את בת הזוג"!\nקוד החדר: ${code}\n${shareLink()}`;
+const hostTools = b => isHost() && b ? `<div class="host-tools">${b}</div>` : "";
+const pills = (r, ids, ok) => `<div class="done-list">${ids.map(id => `<span class="pill ${ok(id) ? "ok" : ""}">${av(r, id)}${esc(nameOf(r, id))} ${ok(id) ? "✅" : "⏳"}</span>`).join("")}</div>`;
+const qData = r => r.q?.[0] === "w" ? { who: true, text: WHO[+r.q.slice(1)] } : { who: false, ...KNOW[+r.q.slice(1)] };
+const fillN = (s, name) => s.replace(/\{N\}/g, name);
+const answerText = (r, c, v) => { const q = qData(r); if (v == null) return "לא ענה/תה"; return q.who ? nameOf(r, v) : q.a[+v]; };
+const coupleRow = (r, c, right = "") => `<div class="couple"><div class="side">${av(r, c[0])}<span class="nm">${esc(nameOf(r, c[0]))}</span></div><span class="heart">💞</span><div class="side">${av(r, c[1])}<span class="nm">${esc(nameOf(r, c[1]))}</span></div></div>${right}`;
+
+function vHome(){
+  const live = B?.kind === "firebase";
+  return `${IN_HUB ? `<a class="hub-link" href="../">🏠 כל המשחקים</a>` : ""}
+  <div class="hero"><div class="icon">💑</div><h1 class="title-xl">הכר את <span>בת הזוג</span></h1>
+    <div class="tagline">כמה אתם באמת מכירים? כל אחד עונה בסוד מהטלפון שלו, ורואים אם התשובות מתאימות. אפשר כמה זוגות ביחד.</div></div>
+  <div class="card">
+    <label class="label" for="nameInput">השם שלך</label>
+    <input class="field" id="nameInput" maxlength="14" placeholder="למשל: דניאל" autocomplete="nickname">
+    <button class="btn gold big block" data-act="create" ${ui.busy ? "disabled" : ""}>✨ צור חדר חדש</button>
+    <div class="or">או הצטרף לחדר</div>
+    <div class="row"><input class="field code-input" id="codeInput" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
+      <button class="btn rose" data-act="join" ${ui.busy ? "disabled" : ""}>הצטרף 🚪</button></div>
+  </div>
+  <div class="mode-pill ${live ? "live" : ""}"><span class="dot"></span>${live ? "מחובר · מולטיפלייר אמיתי" : "מצב סימולציה"}</div>
+  ${live ? "" : `<div class="sim-banner">🧪 <b>מצב סימולציה:</b> צור חדר והוסף בוט כבן/בת זוג כדי לראות איך המשחק עובד.</div>`}
+  <div class="card"><div class="label">איך משחקים?</div><ol class="how">
+    <li><div>כל אחד נכנס מהטלפון שלו ובוחר בלובי מי בן/בת הזוג שלו.</div></li>
+    <li><div><b>שאלת ניחוש:</b> אחד עונה על עצמו ("מה הקינוח האהוב עליך?") והשני מנחש מה הוא ענה. מתחלפים כל סיבוב.</div></li>
+    <li><div><b>שאלת "מי מכם…":</b> שניכם מצביעים בסוד. אם הסכמתם, זו נקודה.</div></li>
+    <li><div>בסוף מוכתר הזוג שהכי מכיר אחד את השני 💞</div></li>
+  </ol></div>`;
+}
+function topbar(){
+  const r = room, inGame = !["lobby", "final"].includes(r.phase); const c = coupleOf(r, me.pid);
+  return `<div class="topbar">${inGame ? "" : `<div class="logo-sm">הכר את בת הזוג</div>`}<div class="spacer"></div>
+    <span class="chip code">${esc(code)}</span>
+    ${inGame ? `<span class="chip">סיבוב ${Math.min(r.round, roundsOf(r))}/${roundsOf(r)}</span>` : ""}
+    ${r.phase !== "lobby" && c ? `<span class="chip">💞 ${(r.cscore || {})[ckey(c)] || 0}</span>` : ""}
+    <button class="chip ghost" data-act="leave">יציאה</button></div>`;
+}
+function vLobby(r){
+  const host = isHost(), mine = P(r, me.pid)?.partner, cs = pairsFromPlayers(r);
+  const others = playersOf(r).filter(p => p.id !== me.pid);
+  const single = playersOf(r).filter(p => !cs.flat().includes(p.id));
+  return `${topbar()}
+  <div class="card center"><div class="eyebrow">קוד החדר</div><div class="bigcode">${esc(code)}</div>
+    <div class="share-row"><a class="btn wa" href="https://wa.me/?text=${encodeURIComponent(shareText())}" target="_blank" rel="noopener">💬 וואטסאפ</a>
+    <button class="btn gold" data-act="copy">🔗 העתק לינק</button></div></div>
+  <div class="card">
+    <div class="label">מי בן/בת הזוג שלך? 💘</div>
+    ${others.length ? `<div class="partners">${others.map(p => `<button data-act="partner" data-id="${esc(p.id)}" class="${mine === p.id ? "on" : ""}">${av(r, p.id)}${esc(p.name)}${p.isBot ? " 🤖" : ""}</button>`).join("")}</div>`
+      : `<div class="muted small">עוד אין פה אף אחד. שלח/י את הקוד לבן/בת הזוג 👆</div>`}
+    ${host ? `<div class="row"><button class="btn small" data-act="botPartner">🤖 בוט כבן/בת זוג שלי</button><button class="btn small" data-act="botPair">🤖 הוסף זוג בוטים</button></div>` : ""}
+  </div>
+  <div class="card"><div class="row" style="align-items:center"><h3>הזוגות</h3><span class="chip" style="flex:0 0 auto">${cs.length}</span></div>
+    ${cs.length ? cs.map(c => coupleRow(r, c)).join("") : `<div class="muted small">כשבני הזוג בוחרים זה את זה, הזוג מופיע כאן.</div>`}
+    ${single.length ? `<div class="small muted">עוד בלי זוג: ${single.map(p => esc(p.name)).join(", ")}</div>` : ""}
+    ${host && single.filter(p => p.id !== me.pid).length ? `<div class="players">${single.filter(p => p.id !== me.pid).map(p => `<li class="player">${av(r, p.id)}<span class="name">${esc(p.name)}</span><button class="x" data-act="kick" data-id="${esc(p.id)}" aria-label="הסר">✕</button></li>`).join("")}</div>` : ""}
+  </div>
+  ${host ? `<div class="card"><div class="label">כמה סיבובים?</div>
+    <div class="seg">${[5, 8, 12].map(k => `<button data-act="rounds" data-v="${k}" class="${k === roundsOf(r) ? "on" : ""}">${k}</button>`).join("")}</div>
+    <button class="btn rose big block" data-act="start" ${cs.length ? "" : "disabled"}>${cs.length ? "💞 מתחילים!" : "צריך לפחות זוג אחד"}</button></div>`
+    : `<div class="waiting">מחכים ש${esc(nameOf(r, hostOf(r)))} יתחיל/תתחיל ${dots}</div>`}`;
+}
+function vAnswer(r){
+  const q = qData(r), c = coupleOf(r, me.pid), mineV = (r.answers || {})[me.pid];
+  const ids = players_in_play(r), done = id => (r.answers || {})[id] != null;
+  let head, body;
+  if (!c){
+    head = `<div class="role who">👀 את/ה צופה</div>`;
+    body = `<div class="question"><div class="eyebrow">השאלה לזוגות · סיבוב ${r.round}</div><div class="t">${esc(q.who ? q.text : fillN(q.o, "בן/בת הזוג"))}</div></div>
+      <div class="waiting">הזוגות עונים בסוד ${dots}</div>`;
+  } else {
+    const partner = partnerOf(r, me.pid), pn = nameOf(r, partner);
+    let text, opts;
+    if (q.who){ head = `<div class="role who">🤝 שניכם מצביעים</div>`; text = q.text;
+      opts = c.map(id => ({ v: id, label: id === me.pid ? "אני 🙋" : nameOf(r, id) })); }
+    else if (subjectOf(r, c) === me.pid){ head = `<div class="role">🙋 עונה על עצמך</div>`; text = q.s; opts = q.a.map((l, i) => ({ v: i, label: l })); }
+    else { head = `<div class="role guess">🔮 תנחש/י מה ${esc(pn)} ענה/תה</div>`; text = fillN(q.o, pn); opts = q.a.map((l, i) => ({ v: i, label: l })); }
+    const qbox = `<div class="question"><div class="eyebrow">סיבוב ${r.round}${q.who ? " · מי מכם" : ""}</div><div class="t">${esc(text)}</div></div>`;
+    body = mineV != null ? `${qbox}<div class="card center"><div class="eyebrow">נעלת</div><div class="locked">${esc(answerText(r, c, mineV))} 🔒</div><div class="muted small">מחכים לשאר ${dots}</div></div>`
+      : `${qbox}<div class="opts">${opts.map(o => `<button data-act="choose" data-v="${esc(o.v)}" class="${String(ui.choice) === String(o.v) ? "on" : ""}">${esc(o.label)}</button>`).join("")}</div>
+         <button class="btn rose big block" data-act="lock" ${ui.choice == null ? "disabled" : ""}>🔒 נעל תשובה</button>`;
+  }
+  return `${topbar()}${head}${body}
+    <div class="card"><div class="row" style="align-items:center"><div class="label">מי כבר נעל</div><span class="chip" style="flex:0 0 auto">${ids.filter(done).length}/${ids.length}</span></div>${pills(r, ids, done)}</div>
+    ${hostTools(`<button class="btn small dark" data-act="swap">🔄 החלף שאלה${Object.keys(r.answers || {}).length ? " (התשובות יימחקו)" : ""}</button>${Object.keys(r.answers || {}).length ? `<button class="btn small" data-act="close">⏭ חשוף עכשיו</button>` : ""}`)}`;
+}
+function vCountdown(r){
+  const left = r.countdownAt + 3000 - B.now();
+  return `${topbar()}<div class="countdown tick" id="cd" aria-live="assertive">${Math.max(1, Math.ceil(left / 1000))}</div><div class="waiting">רגע האמת… 💓</div>`;
+}
+function vReveal(r){
+  const q = qData(r), last = r.round >= roundsOf(r), ans = r.answers || {};
+  const cards = (r.result || []).map((x, i) => {
+    const [a, b] = x.c;
+    const rows = q.who ? x.c.map(id => `<div class="ans">${av(r, id)}<div><div class="who">${esc(nameOf(r, id))} הצביע/ה</div><div class="what">${esc(answerText(r, x.c, ans[id]))}</div></div></div>`).join("")
+      : (() => { const s = x.subject, g = s === a ? b : a;
+          return `<div class="ans">${av(r, s)}<div><div class="who">${esc(nameOf(r, s))} ענה/תה</div><div class="what">${esc(answerText(r, x.c, ans[s]))}</div></div></div>
+                  <div class="ans">${av(r, g)}<div><div class="who">${esc(nameOf(r, g))} ניחש/ה</div><div class="what">${esc(answerText(r, x.c, ans[g]))}</div></div></div>`; })();
+    return `<div class="result ${x.match ? "match" : "miss"}" style="animation-delay:${i * .35}s">
+      <div class="head"><span>${esc(nameOf(r, a))} 💞 ${esc(nameOf(r, b))}</span><span class="verdict">${x.match ? "✅ מכירים! +1" : "❌ פספוס"}</span></div>${rows}</div>`;
+  }).join("");
+  const mine = (r.result || []).find(x => x.c.includes(me.pid));
+  return `${topbar()}
+    <div class="question"><div class="eyebrow">השאלה</div><div class="t">${esc(q.who ? q.text : fillN(q.o, "בן/בת הזוג"))}</div></div>
+    ${mine ? `<div class="role ${mine.match ? "" : "guess"}" style="background:${mine.match ? "var(--mint)" : "var(--bad)"}">${mine.match ? "💞 אתם מכירים!" : "😬 אופס… על זה תדברו בבית"}</div>` : ""}
+    ${cards}
+    ${isHost() ? `<button class="btn gold big block" data-act="next">${last ? "🏆 לתוצאות הסופיות" : "➡️ שאלה הבאה"}</button>` : `<div class="waiting">מחכים לשאלה הבאה ${dots}</div>`}`;
+}
+function vFinal(r){
+  const total = r.round - 1 > 0 ? Math.min(r.round - 1, roundsOf(r)) : roundsOf(r);
+  const cs = couplesOf(r).map(c => ({ c, pts: (r.cscore || {})[ckey(c)] || 0 })).sort((a, b) => b.pts - a.pts);
+  const top = cs[0]; const tied = cs.filter(x => x.pts === top?.pts);
+  let rank = 0, prev = null;
+  const pct = x => Math.round(x.pts / Math.max(1, total) * 100);
+  const verdict = p => p >= 80 ? "נשמות תאומות 💘" : p >= 60 ? "מכירים טוב מאוד 😍" : p >= 40 ? "יש על מה לעבוד 😅" : "נעים להכיר?! 🤝";
+  return `${topbar()}
+  <div class="card center"><div class="crown">👑</div><div class="eyebrow">הזוג שהכי מכיר${tied.length > 1 ? " (תיקו!)" : ""}</div>
+    ${top ? tied.map(x => `<div class="king">${esc(nameOf(r, x.c[0]))} 💞 ${esc(nameOf(r, x.c[1]))}</div>`).join("") + `<div class="label">${top.pts} מתוך ${total} · ${pct(top)}% התאמה</div><div>${verdict(pct(top))}</div>` : `<div class="king">אין זוגות 🤷</div>`}</div>
+  <div class="card"><div class="label">דירוג הזוגות</div><ol class="board">${cs.map((x, i) => { if (x.pts !== prev){ rank = i + 1; prev = x.pts; }
+    return `<li class="${x.c.includes(me.pid) ? "me" : ""}"><span class="rk">${["🥇","🥈","🥉"][rank - 1] || rank}</span><span class="nm">${esc(nameOf(r, x.c[0]))} 💞 ${esc(nameOf(r, x.c[1]))}</span><span class="pt">${x.pts} · ${pct(x)}%</span></li>`; }).join("")}</ol></div>
+  ${isHost() ? `<button class="btn rose big block" data-act="again">🔁 משחק חוזר</button>` : `<div class="waiting">מחכים למנהל החדר…</div>`}`;
+}
+function view(){
+  if (!B) return `<div class="waiting" style="min-height:60vh">טוען ${dots}</div>`;
+  if (!code) return vHome();
+  if (!loaded) return `<div class="waiting" style="min-height:60vh">מתחבר לחדר ${esc(code)} ${dots}</div>`;
+  if (!room) return `<div class="card center"><h2>החדר נסגר 🤷</h2><button class="btn gold block" data-act="leave">חזרה למסך הראשי</button></div>`;
+  return ({ lobby: vLobby, answer: vAnswer, countdown: vCountdown, reveal: vReveal, final: vFinal }[room.phase] || vLobby)(room);
+}
+let lastHTML = "";
+function render(){
+  const html = view(); if (html === lastHTML) return;
+  const a = document.activeElement, fid = a?.id, sel = fid && "selectionStart" in a ? [a.selectionStart, a.selectionEnd] : null;
+  const keep = { nameInput: $("#nameInput")?.value, codeInput: $("#codeInput")?.value };
+  $("#app").innerHTML = html; lastHTML = html;
+  const ni = $("#nameInput"); if (ni) ni.value = keep.nameInput ?? me.name;
+  const ci = $("#codeInput"); if (ci) ci.value = keep.codeInput ?? (location.hash.match(/^#([A-Za-z0-9]{4})$/)?.[1] || "").toUpperCase();
+  if (fid){ const el = document.getElementById(fid); if (el){ el.focus({ preventScroll: true }); if (sel) try { el.setSelectionRange(...sel); } catch(e){} } }
+}
+
+/* ============ events ============ */
+document.addEventListener("input", e => { if (e.target.id === "codeInput") e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "codeInput") joinRoom(e.target.value); });
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-act]"); if (!t || t.disabled) return;
+  const a = t.dataset.act, v = t.dataset.v;
+  switch (a){
+    case "create": return createRoom();
+    case "join": return joinRoom($("#codeInput")?.value);
+    case "leave": return leaveRoom();
+    case "copy": try { await navigator.clipboard.writeText(shareText()); toast("הלינק הועתק 📋"); } catch(err){ toast("קוד: " + code + " · " + shareLink(), 4500); } return;
+    case "partner": { const id = t.dataset.id; return act(A.partner(me.pid, P(room, me.pid)?.partner === id ? null : id)); }
+    case "botPartner": return addBot(true);
+    case "botPair": return addBot(false);
+    case "kick": return act(r => { const id = t.dataset.id; if (!r.players?.[id]) return false; const pt = r.players[id].partner; if (pt && r.players[pt]) r.players[pt].partner = null; delete r.players[id]; });
+    case "rounds": return act(r => { r.settings = { ...(r.settings || {}), rounds: +v }; });
+    case "start": return act(A.start);
+    case "swap": return act(A.swap);
+    case "choose": ui.choice = v; return render();
+    case "lock": { if (ui.choice == null) return; const q = qData(room); const val = q.who ? ui.choice : +ui.choice; return act(A.answer(me.pid, val, B.now())); }
+    case "close": return act(A.close(B.now()));
+    case "next": return act(A.next);
+    case "again": return act(A.toLobby);
+  }
+});
+
+/* ============ boot ============ */
+(async function boot(){
+  render();
+  if (FB_CONFIGURED && !FORCE_SIM){
+    try { await loadScript("https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"); await loadScript("https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-database-compat.js"); B = FirebaseBackend(); }
+    catch(e){ console.error(e); toast("לא הצלחתי להתחבר, עובר למצב סימולציה", 4000); B = LocalBackend(); }
+  } else B = LocalBackend();
+  render();
+  const q = new URLSearchParams(location.search);
+  if (q.get("join") || q.has("create")){
+    const j = q.get("join"); try { history.replaceState(null, "", location.pathname); } catch(e){}
+    if (me.name){ if (j) joinRoom(j); else createRoom(); return; }
+  }
+  const saved = sget("kp-room");
+  if (saved && me.name && await B.exists(saved)) joinRoom(saved);
+})();
+</script>
+</body>
+</html>

@@ -54,6 +54,9 @@ h1 span{color:var(--sun)}
 .game.likely{background:#D92E6F;color:#fff}
 .game.likely h2{font-family:"Rubik";font-weight:900}
 .game.likely .btn{background:#FFE45C}
+.game.couples{background:#7A1631;color:#fff}
+.game.couples h2{font-family:"Rubik";font-weight:900;color:#FFB38A}
+.game.couples .btn{background:#FFD25E}
 .game .art{position:absolute;inset-inline-start:-6px;top:10px;font-size:3.4rem;opacity:.9;transform:rotate(-10deg);pointer-events:none}
 .game h2,.game p{padding-inline-start:64px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--paper);color:var(--ink);padding:10px 18px;border-radius:999px;font-weight:700;max-width:calc(100% - 32px);text-align:center}
@@ -105,6 +108,13 @@ h1 span{color:var(--sun)}
     <div class="meta">3+ שחקנים · Most Likely To</div>
     <button class="btn" data-create="likely">✨ צור חדר</button>
   </section>
+  <section class="game couples">
+    <div class="art" aria-hidden="true">💑</div>
+    <h2>הכר את בת הזוג</h2>
+    <p>כמה אתם באמת מכירים? אחד עונה על עצמו, השני מנחש. אפשר כמה זוגות ביחד, ובסוף רואים מי הזוג שהכי מכיר.</p>
+    <div class="meta">זוג אחד ומעלה · שאלות ניחוש ו"מי מכם…"</div>
+    <button class="btn" data-create="couples">✨ צור חדר</button>
+  </section>
 </main>
 <script>
 const DB = "https://fr-game-1ebcd-default-rtdb.firebaseio.com";
@@ -132,7 +142,7 @@ async function join(){
   const c = $("#code").value.trim().toUpperCase();
   if (c.length !== 4) return toast("קוד חדר צריך להיות 4 תווים");
   const btn = $("#joinBtn"); btn.disabled = true; btn.textContent = "מחפש…";
-  const games = { odds: "", sababa: "SB_", auction: "AU_", likely: "ML_" };
+  const games = { odds: "", sababa: "SB_", auction: "AU_", likely: "ML_", couples: "KP_" };
   const found = await Promise.all(Object.entries(games).map(async ([g, pre]) => [g, await created(pre + c)]));
   btn.disabled = false; btn.textContent = "הצטרף 🚪";
   const best = found.filter(([, t]) => t).sort((a, b) => b[1] - a[1])[0];
