@@ -467,3 +467,8 @@ label.btn { cursor: pointer; }
   .chart-wrap.compact { height: 200px; }
   .table-wrap { max-height: none; overflow: visible; }
 }
+
+/* embedded viewers (no print dialog / file downloads) */
+.embed #exportBoard, .embed [data-csv] { display: none !important; }
+.embed, .embed body { height: 100%; }
+.embed .app { height: 100%; }

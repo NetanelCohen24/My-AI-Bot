@@ -51,6 +51,7 @@
       $('#stage').innerHTML = '<div class="artifact"><h2 class="insight-headline">לא ניתן לטעון את ספריות העיבוד</h2><p>בדקו את החיבור לרשת ורעננו את הדף.</p></div>';
       return;
     }
+    if (window.TQ_EMBED) document.documentElement.classList.add('embed');
     loadBuiltin();
     S.board = store.get('tq.board.v1', []);
     $('#boardTitle').textContent = store.get('tq.boardTitle', 'לוח סיכום אנליטי');
@@ -123,8 +124,15 @@
 
     $('#exportBoard').addEventListener('click', exportBoard);
     $('#clearBoard').addEventListener('click', () => {
+      const btn = $('#clearBoard');
       if (!S.board.length) return;
-      if (!confirm('להסיר את כל הפריטים מלוח הבקרה?')) return;
+      if (!btn.dataset.armed) { // two-step confirm inside the page
+        btn.dataset.armed = '1';
+        btn.lastChild.textContent = ' לחצו שוב לאישור';
+        setTimeout(() => { delete btn.dataset.armed; btn.lastChild.textContent = ' נקה לוח'; }, 3000);
+        return;
+      }
+      delete btn.dataset.armed; btn.lastChild.textContent = ' נקה לוח';
       S.board = []; saveBoard(); renderBoard(); syncPinButtons();
     });
     $('#boardTitle').addEventListener('input', () => store.set('tq.boardTitle', $('#boardTitle').textContent.trim()));
