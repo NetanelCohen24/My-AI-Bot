@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0B0F19" />
+    <script>
+      // Apply the saved/system theme before first paint (no flash).
+      try {
+        var t = localStorage.getItem('depot.theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.dataset.theme = t;
+      } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+    </script>
     <title>Depot · ניהול מלאי</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%230B0F19' stroke='%23F59E0B' stroke-width='2'/><circle cx='16' cy='16' r='7' fill='none' stroke='%23F59E0B' stroke-width='1.5' opacity='.6'/><path d='M16 16 L27 9' stroke='%23F59E0B' stroke-width='2'/><circle cx='22' cy='12' r='2' fill='%23FF3B5C'/></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

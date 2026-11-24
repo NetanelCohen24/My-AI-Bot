@@ -61,10 +61,10 @@ export default function Dashboard({ go }) {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={flow} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#1E293B" strokeDasharray="2 4" vertical={false} />
-                <XAxis dataKey="date" reversed tickFormatter={(d) => `${d.slice(8)}/${d.slice(5, 7)}`} tick={{ fill: '#64748B', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: '#1E293B' }} tickLine={false} interval={2} />
-                <YAxis orientation="right" tick={{ fill: '#64748B', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={40} />
-                <Tooltip cursor={{ fill: 'rgba(148,163,184,.06)' }} contentStyle={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: 10, fontSize: 12 }}
+                <CartesianGrid stroke="var(--grid)" strokeDasharray="2 4" vertical={false} />
+                <XAxis dataKey="date" reversed tickFormatter={(d) => `${d.slice(8)}/${d.slice(5, 7)}`} tick={{ fill: 'var(--tick)', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: 'var(--grid)' }} tickLine={false} interval={2} />
+                <YAxis orientation="right" tick={{ fill: 'var(--tick)', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={40} />
+                <Tooltip cursor={{ fill: 'rgba(148,163,184,.06)' }} contentStyle={{ background: 'var(--tip-bg)', border: '1px solid var(--grid)', color: 'var(--tick)', borderRadius: 10, fontSize: 12 }}
                   labelFormatter={fmtDate} formatter={(v, n) => [fmt(v), n === 'in' ? 'נקלט' : 'נשלח']} />
                 <Bar dataKey="in" fill="#10B981" radius={[3, 3, 0, 0]} maxBarSize={12} />
                 <Bar dataKey="out" fill="#38BDF8" radius={[3, 3, 0, 0]} maxBarSize={12} />

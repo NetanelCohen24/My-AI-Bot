@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Boxes, ClipboardList, PackagePlus, ShoppingCart, CalendarClock, ClipboardCheck, History, Store, Factory,
   FileSpreadsheet, Settings as Cog, Menu, X, Cloud, HardDrive, Sparkles, LogIn, Loader2,
 } from 'lucide-react';
-import { ToastProvider, Field, Input } from './components/ui.jsx';
+import { ToastProvider, Field, Input, ThemeToggle } from './components/ui.jsx';
 import { DataProvider, useData } from './lib/store.jsx';
 import { localBackend, supabaseBackend, getSupabaseConfig, setSupabaseConfig } from './lib/backend.js';
 import { generateDemo } from './lib/mock.js';
@@ -144,6 +144,7 @@ function Shell({ onSignOut }) {
           ))}
         </nav>
         <div className="border-t border-coal-700 p-3 text-[11px] text-slate-500">
+          <div className="mb-2"><ThemeToggle withLabel /></div>
           <div className="flex items-center gap-1.5">
             {be.kind === 'supabase' ? <Cloud size={12} className="text-healthy" /> : <HardDrive size={12} className="text-phantom" />}
             {be.kind === 'supabase' ? 'מסד משותף' : 'מצב מקומי · נשמר בדפדפן זה'}
@@ -157,6 +158,7 @@ function Shell({ onSignOut }) {
         <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-coal-700 bg-coal-900/90 px-4 py-3 backdrop-blur lg:hidden">
           <button onClick={() => setMenu(true)} className="rounded p-1 text-slate-300" aria-label="תפריט"><Menu size={20} /></button>
           <Logo />
+          <div className="ms-auto"><ThemeToggle /></div>
         </div>
         <main className="mx-auto max-w-[1500px] p-4 md:p-6">{pages[page] || pages.dashboard}</main>
       </div>
@@ -210,7 +212,12 @@ function Logo({ big }) {
 }
 
 function Center({ children }) {
-  return <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-6 text-center">{children}</div>;
+  return (
+    <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-6 text-center">
+      <div className="absolute end-4 top-4"><ThemeToggle withLabel /></div>
+      {children}
+    </div>
+  );
 }
 function Splash() {
   return <Center><Loader2 className="animate-spin text-phantom" size={28} /></Center>;

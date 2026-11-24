@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { X, Search, ScanBarcode, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, Search, ScanBarcode, AlertTriangle, CheckCircle2, Sun, Moon } from 'lucide-react';
 
 /* ───── Toasts ───── */
 const ToastCtx = createContext(() => {});
@@ -209,4 +209,26 @@ function fallback(text) {
   ta.value = text; document.body.appendChild(ta); ta.select();
   try { document.execCommand('copy'); } catch { /* ignore */ }
   ta.remove();
+}
+
+/* ───── Theme (dark / light) ───── */
+export function useTheme() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'dark');
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F4F6FA' : '#0B0F19');
+    try { localStorage.setItem('depot.theme', theme); } catch { /* private mode */ }
+  }, [theme]);
+  return [theme, () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))];
+}
+
+export function ThemeToggle({ withLabel }) {
+  const [theme, toggle] = useTheme();
+  const light = theme === 'light';
+  return (
+    <button onClick={toggle} className="btn !px-2.5 !py-1.5 text-xs" aria-label={light ? 'מעבר למצב כהה' : 'מעבר למצב בהיר'} title={light ? 'מצב כהה' : 'מצב בהיר'}>
+      {light ? <Moon size={15} /> : <Sun size={15} />}
+      {withLabel && (light ? 'מצב כהה' : 'מצב בהיר')}
+    </button>
+  );
 }

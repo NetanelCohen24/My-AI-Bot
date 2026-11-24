@@ -114,7 +114,7 @@ export default function Purchasing({ onReceive }) {
               {PO_STATUS[po.status].open && <button className="btn btn-primary" onClick={() => { setView(null); onReceive(po.id); }}><PackagePlus size={14} /> קליטה</button>}
             </>}>
             <div className="mb-3 flex items-center gap-2"><Badge color={PO_STATUS[po.status].color}>{PO_STATUS[po.status].label}</Badge><span className="text-sm text-slate-300">{sup?.name}</span></div>
-            <pre className="whitespace-pre-wrap rounded-xl border border-coal-700 bg-black/40 p-4 font-sans text-[13px] leading-relaxed text-slate-200">{text}</pre>
+            <pre className="whitespace-pre-wrap rounded-xl border border-coal-700 bg-coal-900/70 p-4 font-sans text-[13px] leading-relaxed text-slate-200">{text}</pre>
             {lines.some((l) => l.received_qty) && <p className="mt-2 text-xs text-slate-400">התקבל: {lines.map((l) => `${idx.product.get(l.product_id)?.name} ${l.received_qty}/${l.qty}`).join(' · ')}</p>}
           </Modal>
         );

@@ -2,39 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme tokens (RGB channels so Tailwind alpha modifiers work). Dark is the default. */
+:root, :root[data-theme='dark'] {
+  color-scheme: dark;
+  --coal-900: 11 15 25; --coal-850: 15 20 34; --coal-800: 18 24 40; --coal-700: 30 41 59; --coal-600: 51 65 85;
+  --slate-100: 241 245 249; --slate-200: 226 232 240; --slate-300: 203 213 225; --slate-400: 148 163 184; --slate-500: 100 116 139; --slate-600: 71 85 105;
+  --contrast: 255 255 255;
+  --phantom-soft: 251 191 36; --critical-soft: 255 107 129; --healthy-soft: 52 211 153; --surge-soft: 125 211 252; --void-soft: 196 181 253;
+  --bg: #0B0F19; --grid: #1E293B; --tick: #64748B; --tip-bg: #0B0F19; --glow-a: rgba(245,158,11,.07); --glow-b: rgba(56,189,248,.05);
+  --grid-line: rgba(148,163,184,.035); --shadow: rgba(0,0,0,.6); --scroll: #1E293B;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+  --coal-900: 244 246 250; --coal-850: 255 255 255; --coal-800: 241 245 249; --coal-700: 226 232 240; --coal-600: 203 213 225;
+  --slate-100: 15 23 42; --slate-200: 30 41 59; --slate-300: 51 65 85; --slate-400: 71 85 105; --slate-500: 100 116 139; --slate-600: 148 163 184;
+  --contrast: 15 23 42;
+  --phantom-soft: 180 83 9; --critical-soft: 190 18 60; --healthy-soft: 4 120 87; --surge-soft: 3 105 161; --void-soft: 109 40 217;
+  --bg: #F4F6FA; --grid: #E2E8F0; --tick: #64748B; --tip-bg: #FFFFFF; --glow-a: rgba(245,158,11,.10); --glow-b: rgba(56,189,248,.08);
+  --grid-line: rgba(15,23,42,.04); --shadow: rgba(15,23,42,.12); --scroll: #CBD5E1;
+}
+
 @layer base {
-  :root { color-scheme: dark; }
-  html, body { background: #0B0F19; }
+  html, body { background: var(--bg); }
   body {
     @apply font-sans text-slate-200 antialiased;
     background:
-      radial-gradient(1200px 600px at 85% -10%, rgba(245, 158, 11, 0.07), transparent 60%),
-      radial-gradient(900px 500px at 0% 110%, rgba(56, 189, 248, 0.05), transparent 60%),
-      #0B0F19;
+      radial-gradient(1200px 600px at 85% -10%, var(--glow-a), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, var(--glow-b), transparent 60%),
+      var(--bg);
     min-height: 100vh;
+    transition: background-color .2s;
   }
-  /* Tactical grid backdrop */
   body::before {
     content: '';
     position: fixed; inset: 0; pointer-events: none; z-index: 0;
     background-image:
-      linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
     background-size: 32px 32px;
     mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
   }
   ::selection { background: rgba(245, 158, 11, 0.35); }
-  * { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+  * { scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
   *::-webkit-scrollbar { width: 8px; height: 8px; }
-  *::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 8px; }
-  *::-webkit-scrollbar-thumb:hover { background: #334155; }
+  *::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 8px; }
   :focus-visible { outline: 2px solid #F59E0B; outline-offset: 2px; }
 }
 
 @layer components {
   .glass {
     @apply rounded-xl border border-coal-700 bg-coal-850/60 backdrop-blur-xl;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 10px 30px -15px rgba(0, 0, 0, 0.6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 10px 30px -15px var(--shadow);
   }
   .panel-title {
     @apply flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400;
@@ -48,7 +66,7 @@
     @apply border-phantom/50 bg-phantom/10 text-phantom-soft hover:bg-phantom/20 hover:border-phantom;
   }
   .btn-primary {
-    @apply border-transparent bg-phantom text-coal font-semibold hover:bg-phantom-soft;
+    @apply border-transparent bg-phantom text-[#0B0F19] font-semibold hover:bg-amber-400;
   }
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full border border-coal-700 px-2.5 py-1 text-xs transition;
