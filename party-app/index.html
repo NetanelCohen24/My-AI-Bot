@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ערב משחקים</title>
 <meta name="theme-color" content="#16112B">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ערב משחקים">
+<script src="/shared/party.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;900&family=Secular+One&family=Heebo:wght@400;700;900&display=swap">
@@ -61,6 +70,48 @@ h1 span{color:var(--sun)}
 .game h2,.game p{padding-inline-start:64px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--paper);color:var(--ink);padding:10px 18px;border-radius:999px;font-weight:700;max-width:calc(100% - 32px);text-align:center}
 :focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+.me{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.me-av{width:84px;height:84px;border:3px solid #000;border-radius:24px;box-shadow:0 5px 0 #000;display:grid;place-items:center;font-size:2.8rem;cursor:pointer;position:relative}
+.me-av .edit{position:absolute;bottom:-8px;inset-inline-start:-8px;background:var(--paper);border:2px solid #000;border-radius:999px;font-size:.75rem;font-weight:900;padding:1px 7px}
+.me-info{display:flex;flex-direction:column;gap:6px;min-width:0}
+.me-name{border:none;border-bottom:3px dashed #0003;background:transparent;font:900 1.35rem Rubik, var(--body);color:var(--ink);padding:2px 0;outline:none;width:100%;min-width:0}
+.me-name:focus{border-bottom-color:var(--pink)}
+.lvl{display:flex;align-items:center;gap:8px;font-weight:900;font-size:.9rem}
+.lvl .badge{background:var(--ink);color:var(--sun);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.xpbar{flex:1;height:12px;border:2px solid #000;border-radius:999px;background:#fff;overflow:hidden}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--sun),var(--pink));border-radius:999px;transition:width .6s}
+.stats{display:flex;gap:12px;font-size:.85rem;font-weight:700;color:#5b5470;flex-wrap:wrap}
+.stats b{color:var(--ink)}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.qbtn{appearance:none;border:2px solid #000;border-radius:14px;background:#fff;box-shadow:0 3px 0 #000;padding:8px 4px;font:inherit;font-weight:900;font-size:.82rem;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:58px}
+.qbtn .i{font-size:1.4rem;line-height:1}
+.qbtn.gift{background:var(--sun);animation:wiggle 1.4s ease-in-out infinite}
+.qbtn:active{transform:translateY(3px);box-shadow:0 0 0 #000}
+@keyframes wiggle{0%,100%{transform:rotate(0)}10%{transform:rotate(-6deg)}20%{transform:rotate(6deg)}30%{transform:rotate(0)}}
+.sheet-bg{position:fixed;inset:0;background:#0009;z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--paper);color:var(--ink);width:100%;max-width:480px;max-height:88%;overflow:auto;border:3px solid #000;border-bottom:none;border-radius:24px 24px 0 0;
+  padding:18px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));display:flex;flex-direction:column;gap:14px;animation:up .3s cubic-bezier(.2,.9,.3,1)}
+@keyframes up{from{transform:translateY(100%)}}
+.sheet h2{margin:0;font:900 1.5rem Rubik, var(--body)}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.close{appearance:none;border:2px solid #000;border-radius:999px;background:#fff;color:var(--ink);font-weight:900;width:40px;height:40px;font-size:1.1rem;cursor:pointer}
+.wallet{background:var(--ink);color:var(--sun);border-radius:999px;padding:4px 12px;font-weight:900;white-space:nowrap}
+.tabs{display:flex;gap:8px}
+.tabs button{flex:1;appearance:none;border:2px solid #000;border-radius:12px;background:#fff;padding:10px;font:inherit;font-weight:900;cursor:pointer;color:var(--ink)}
+.tabs button.on{background:var(--ink);color:var(--sun)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:10px}
+.item{appearance:none;border:3px solid #000;border-radius:16px;background:#fff;box-shadow:0 3px 0 #000;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font:inherit;color:var(--ink)}
+.item .e{font-size:2rem;line-height:1.1}
+.item .sw{width:40px;height:40px;border-radius:12px;border:2px solid #000}
+.item .p{font-size:.75rem;font-weight:900;white-space:nowrap}
+.item.locked{background:#f1ebe0}
+.item.locked .e,.item.locked .sw{filter:grayscale(.2);opacity:.75}
+.item.on{background:var(--sun);transform:translateY(2px);box-shadow:0 1px 0 #000}
+.preview{display:flex;align-items:center;gap:14px}
+.steps{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;line-height:1.5}
+.steps li::before{counter-increment:s;content:counter(s);width:28px;height:28px;border:2px solid #000;border-radius:8px;background:var(--sun);display:grid;place-items:center;font-weight:900}
+.btn.primary{background:var(--pink);color:#fff;width:100%}
 </style>
 </head>
 <body>
@@ -68,9 +119,25 @@ h1 span{color:var(--sun)}
   <h1>ערב <span>משחקים</span></h1>
   <div class="sub">כל אחד מהטלפון שלו. קוד חדר אחד.</div>
 
+  <div class="panel" id="profile">
+    <div class="me">
+      <button class="me-av" id="meAv" aria-label="עריכת האווטאר"><span id="meEmoji">🦊</span><span class="edit">✏️</span></button>
+      <div class="me-info">
+        <label class="small" for="name" style="font-weight:700;font-size:.8rem;color:#5b5470">השם שלך</label>
+        <input class="me-name" id="name" maxlength="14" placeholder="איך קוראים לך?" autocomplete="nickname">
+        <div class="lvl"><span class="badge" id="lvlBadge">רמה 1</span><div class="xpbar"><i id="xpFill" style="width:0%"></i></div><span id="xpText" style="font-size:.75rem;white-space:nowrap">0/100</span></div>
+        <div class="stats"><span>🪙 <b id="coins">0</b></span><span>🎮 <b id="games">0</b> משחקים</span><span>🏆 <b id="wins">0</b> ניצחונות</span></div>
+      </div>
+    </div>
+    <div class="quick">
+      <button class="qbtn" id="giftBtn"><span class="i">🎁</span><span id="giftLabel">מתנה יומית</span></button>
+      <button class="qbtn" id="shopBtn"><span class="i">🛒</span>חנות</button>
+      <button class="qbtn" id="soundBtn"><span class="i" id="soundIcon">🔊</span><span id="soundLabel">צלילים</span></button>
+      <button class="qbtn" id="installBtn"><span class="i">📲</span>התקנה</button>
+    </div>
+  </div>
+
   <div class="panel">
-    <label class="label" for="name">השם שלך</label>
-    <input class="field" id="name" maxlength="14" placeholder="למשל: דניאל" autocomplete="nickname">
     <label class="label" for="code">קיבלת קוד מחבר?</label>
     <div class="row">
       <input class="field code" id="code" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
@@ -122,14 +189,85 @@ const $ = s => document.querySelector(s);
 const get = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const set = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} };
 function toast(m){ document.querySelectorAll(".toast").forEach(t => t.remove()); const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
-$("#name").value = get("odds-name") || get("sb-name") || "";
+const PT = window.Party;
+$("#name").value = (PT ? PT.load().name : "") || get("odds-name") || get("sb-name") || "";
+const avStyle = c => "background:" + c;
+function paintProfile(){
+  if (!PT){ $("#profile").hidden = true; return; }
+  const p = PT.load(), L = PT.levelOf(p.xp);
+  $("#meEmoji").textContent = p.emoji; $("#meAv").setAttribute("style", avStyle(p.color));
+  $("#lvlBadge").textContent = "רמה " + L.level; $("#xpFill").style.width = L.pct + "%"; $("#xpText").textContent = L.into + "/" + L.need + " XP";
+  $("#coins").textContent = p.coins.toLocaleString("he-IL"); $("#games").textContent = p.games; $("#wins").textContent = p.wins;
+  const ready = PT.dailyReady(); $("#giftBtn").classList.toggle("gift", ready); $("#giftLabel").textContent = ready ? "מתנה יומית" : "נאסף היום ✓";
+  $("#soundIcon").textContent = p.muted ? "🔇" : "🔊"; $("#soundLabel").textContent = p.muted ? "מושתק" : "צלילים";
+  $("#installBtn").hidden = PT.standalone();
+}
+paintProfile();
+$("#name").addEventListener("change", () => { if (!PT) return; const p = PT.load(); p.name = $("#name").value.trim().slice(0, 14); PT.save(p); });
+$("#giftBtn").addEventListener("click", () => {
+  if (!PT) return;
+  if (PT.claimDaily()){ PT.flash("🎁 קיבלת " + PT.DAILY + " מטבעות! תחזור/י מחר לעוד"); } else toast("כבר אספת היום. מחר יש עוד 🎁");
+  paintProfile();
+});
+$("#soundBtn").addEventListener("click", () => { PT && PT.toggleSound(); paintProfile(); });
+
+/* ---------- bottom sheets ---------- */
+function sheet(html){
+  closeSheet();
+  const bg = document.createElement("div"); bg.className = "sheet-bg"; bg.id = "sheetBg";
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  bg.addEventListener("click", e => { if (e.target === bg || e.target.closest("[data-close]")) closeSheet(); });
+  document.body.appendChild(bg); return bg;
+}
+function closeSheet(){ $("#sheetBg")?.remove(); paintProfile(); }
+let shopTab = "emoji";
+function openShop(){
+  const p = PT.load();
+  const items = shopTab === "emoji"
+    ? [...PT.FREE_EMOJI.map(id => ({ id, price: 0 })), ...PT.SHOP_EMOJI]
+    : [...PT.FREE_COLORS.map(id => ({ id, price: 0 })), ...PT.SHOP_COLORS];
+  const cur = shopTab === "emoji" ? p.emoji : p.color;
+  const bg = sheet(`
+    <div class="sheet-head"><h2>האווטאר שלי</h2><span class="wallet">🪙 ${p.coins.toLocaleString("he-IL")}</span><button class="close" data-close aria-label="סגירה">✕</button></div>
+    <div class="preview"><div class="me-av" style="${avStyle(p.color)};cursor:default">${p.emoji}</div>
+      <div class="small" style="line-height:1.5">ככה החברים יראו אותך בכל המשחקים. מרוויחים מטבעות מכל משחק שמסיימים, ומהמתנה היומית 🎁</div></div>
+    <div class="tabs"><button data-tab="emoji" class="${shopTab === "emoji" ? "on" : ""}">דמויות</button><button data-tab="color" class="${shopTab === "color" ? "on" : ""}">צבעים</button></div>
+    <div class="grid">${items.map(it => { const own = PT.owns(p, it.id);
+      return `<button class="item ${own ? "" : "locked"} ${cur === it.id ? "on" : ""}" data-item="${encodeURIComponent(it.id)}" data-price="${it.price}">
+        ${shopTab === "emoji" ? `<span class="e">${it.id}</span>` : `<span class="sw" style="${avStyle(it.id)}"></span>`}
+        <span class="p">${cur === it.id ? "בשימוש" : own ? "בחר/י" : "🪙 " + it.price}</span></button>`; }).join("")}</div>`);
+  bg.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => { shopTab = b.dataset.tab; openShop(); }));
+  bg.querySelectorAll("[data-item]").forEach(b => b.addEventListener("click", () => {
+    const id = decodeURIComponent(b.dataset.item), price = +b.dataset.price, q = PT.load();
+    if (!PT.owns(q, id)){
+      const r = PT.buy(id, price);
+      if (r === "poor"){ toast(`חסרים ${(price - q.coins).toLocaleString("he-IL")} מטבעות. שחק/י עוד קצת 😉`); return; }
+      PT.flash("נקנה! 🎉");
+    }
+    const z = PT.load(); if (shopTab === "emoji") z.emoji = id; else z.color = id; PT.save(z); PT.sound("pop"); openShop();
+  }));
+}
+$("#shopBtn").addEventListener("click", () => PT && openShop());
+$("#meAv").addEventListener("click", () => PT && openShop());
+$("#installBtn").addEventListener("click", async () => {
+  if (!PT) return;
+  const r = await PT.install();
+  if (r === "installed"){ toast("הותקן! 🎉"); paintProfile(); return; }
+  if (r === "dismissed") return;
+  sheet(`<div class="sheet-head"><h2>להתקין כאפליקציה 📲</h2><button class="close" data-close aria-label="סגירה">✕</button></div>
+    <div>ככה "ערב משחקים" יופיע במסך הבית עם אייקון משלו, וייפתח במסך מלא בלי שורת כתובת.</div>
+    <ol class="steps">${PT.installHelp().map(s => `<li><div>${s}</div></li>`).join("")}</ol>
+    <button class="btn primary" data-close>הבנתי</button>`);
+});
 const hashCode = (location.hash.match(/^#([A-Za-z0-9]{4})$/) || [])[1];
 if (hashCode) $("#code").value = hashCode.toUpperCase();
 $("#code").addEventListener("input", e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); });
 function saveName(){
   const n = $("#name").value.trim().slice(0, 14);
   if (!n){ toast("איך קוראים לך? 🙂"); $("#name").focus(); return false; }
-  set("odds-name", n); set("sb-name", n); return true;
+  set("odds-name", n); set("sb-name", n);
+  if (PT){ const p = PT.load(); p.name = n; PT.save(p); }
+  return true;
 }
 document.querySelectorAll("[data-create]").forEach(b => b.addEventListener("click", () => {
   if (saveName()) location.href = b.dataset.create + "/?create=1";

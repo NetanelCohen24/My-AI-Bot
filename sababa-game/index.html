@@ -25,6 +25,7 @@ const firebaseConfig = {
   appId: "1:929442656248:web:b012bacf8aa7d91f7cf00d"
 };
 </script>
+<script src="../shared/party.js"></script>
 <style>
 /* Layout: one phone-width column on a tangerine "complaints board"; answers are pinned sticky notes, slightly askew.
    Deliberately single-theme. */
@@ -319,7 +320,7 @@ const hostOf = r => onlinePlayers(r).filter(p => !p.isBot)[0]?.id || r?.hostPid;
 const isHost = () => room && hostOf(room) === me.pid;
 const P = (r, id) => (r?.players || {})[id];
 const nameOf = (r, id) => P(r, id)?.name || "?";
-function av(r, id){ const p = P(r, id) || {}; p.avatar = Number.isInteger(p.avatar) ? p.avatar : 0; return `<div class="av" style="background:${AV_COLORS[p.avatar % AV_COLORS.length]}">${AVATARS[p.avatar % AVATARS.length]}</div>`; }
+function av(r, id){ const p = P(r, id) || {}; p.avatar = Number.isInteger(p.avatar) ? p.avatar : 0; return `<div class="av" style="background:${lookColor(p) || AV_COLORS[p.avatar % AV_COLORS.length]}">${lookEmoji(p) || AVATARS[p.avatar % AVATARS.length]}</div>`; }
 const dots = `<span class="dots"><span></span><span></span><span></span></span>`;
 const roundsOf = r => r.settings?.rounds || 5;
 /* who still owes a rating: online players who have at least one answer by someone else to rate */
@@ -391,7 +392,7 @@ async function createRoom(){
   let c; for (let i = 0; i < 10; i++){ c = Array.from({ length: 4 }, () => CODE_CHARS[rnd(CODE_CHARS.length)]).join(""); if (!(await B.exists(c))) break; }
   const now = B.now();
   await B.create(c, { game: "sababa", createdAt: now, hostPid: me.pid, phase: "lobby", round: 0, settings: { rounds: 5, timer: 90 },
-    players: { [me.pid]: { name: me.name, score: 0, joinedAt: now, online: true, avatar: rnd(AVATARS.length) } } });
+    players: { [me.pid]: { ...LOOK(), name: me.name, score: 0, joinedAt: now, online: true, avatar: rnd(AVATARS.length) } } });
   ui.busy = false; enterRoom(c);
 }
 async function joinRoom(c){
@@ -405,11 +406,11 @@ async function joinRoom(c){
     r.players = r.players || {};
     for (const [id, p] of Object.entries(r.players)) if (!p || !p.name) delete r.players[id];
     const mine = r.players[me.pid];
-    if (mine && Number.isInteger(mine.avatar)){ mine.name = me.name; mine.online = true; return; }
+    if (mine && Number.isInteger(mine.avatar)){ Object.assign(mine, LOOK()); mine.name = me.name; mine.online = true; return; }
     if (Object.keys(r.players).length >= 14) return false;
     const used = new Set(Object.values(r.players).map(p => p.avatar)); let a = rnd(AVATARS.length);
     for (let i = 0; i < AVATARS.length && used.has(a); i++) a = (a + 1) % AVATARS.length;
-    r.players[me.pid] = { name: me.name, score: 0, joinedAt: now, online: true, avatar: a };
+    r.players[me.pid] = { ...LOOK(), name: me.name, score: 0, joinedAt: now, online: true, avatar: a };
   });
   ui.busy = false; if (!ok){ render(); return toast("החדר מלא"); }
   enterRoom(c);
@@ -426,14 +427,29 @@ async function leaveRoom(){
   try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
   stopConfetti(); render();
 }
+/* ---- shared profile (shared/party.js): my look, sounds and end-of-game rewards ---- */
+const PARTY = window.Party || null;
+const SAFE_COLOR = /^(#[0-9a-fA-F]{3,8}|linear-gradient\([#0-9a-zA-Z,.%() -]{1,120}\))$/;
+function LOOK(){ if (!PARTY) return {}; const x = PARTY.extras(); const o = {};
+  if (typeof x.emoji === "string" && x.emoji.length <= 8) o.emoji = x.emoji; if (SAFE_COLOR.test(x.color || "")) o.color = x.color; if (Number.isInteger(x.lvl)) o.lvl = x.lvl; return o; }
+const lookColor = p => (p && SAFE_COLOR.test(p.color || "")) ? p.color : null;
+const lookEmoji = p => (p && typeof p.emoji === "string" && p.emoji.length <= 8) ? esc(p.emoji) : null;
+function finalAward(r){
+  if (!PARTY || !r || !r.players?.[me.pid]) return;
+  const ps = Object.values(r.players).filter(p => p && p.name);
+  const max = Math.max(0, ...ps.map(p => +p.score || 0)), mine = +r.players[me.pid].score || 0;
+  const win = max > 0 && mine === max;
+  const key = (typeof KEY === "function" ? KEY(code) : code) + ":" + r.createdAt + ":" + ps.map(p => p.score || 0).join(",") + ":" + (r.round || 0);
+  if (PARTY.award({ key, xp: 40 + (win ? 60 : 0), coins: 20 + (win ? 50 : 0), win })) PARTY.sound(win ? "win" : "reveal");
+}
 function onRoom(){
   if (room && !room.players?.[me.pid]){ toast("יצאת מהחדר"); leaveRoom(); return; }
   if (room){
     const k = room.phase + ":" + room.round;
     if (room.phase === "writing" && ui.topicKey === k && ui.topic && ui.topic !== room.topic) toast("🔄 נושא חדש: " + room.topic);
     ui.topicKey = k; ui.topic = room.topic;
-    if (k !== ui.phaseKey){ ui.phaseKey = k; if (room.phase === "writing") ui.text = ""; ui.rates = {}; window.scrollTo({ top: 0, behavior: "smooth" }); if (room.phase !== "final") stopConfetti(); }
-    if (room.phase === "final") startConfetti();
+    if (k !== ui.phaseKey){ ui.phaseKey = k; window.Party?.sound({ reveal: "reveal", results: "reveal", scored: "reveal", voting: "go", rating: "go", answer: "go", writing: "go", challenge: "go", picking: "go", countdown: "lock" }[room.phase]); if (room.phase === "writing") ui.text = ""; ui.rates = {}; window.scrollTo({ top: 0, behavior: "smooth" }); if (room.phase !== "final") stopConfetti(); }
+    if (room.phase === "final"){ startConfetti(); finalAward(room); }
   }
   render(); driveBots();
 }
@@ -528,7 +544,7 @@ function topbar(){
     ${inGame ? `<span class="chip">סיבוב ${Math.min(r.round, roundsOf(r))}/${roundsOf(r)}</span>` : ""}
     ${left != null ? `<span class="chip timer ${left <= 10 ? "low" : ""}" id="timer">⏱ ${left}</span>` : ""}
     ${r.phase !== "lobby" ? `<span class="chip">⭐ ${P(r, me.pid)?.score || 0}</span>` : ""}
-    <button class="chip ghost" data-act="leave">יציאה</button>
+    ${PARTY ? `<button class="chip ghost" data-act="mute" aria-label="צלילים">${PARTY.load().muted ? "🔇" : "🔊"}</button>` : ""}<button class="chip ghost" data-act="leave">יציאה</button>
   </div>`;
 }
 const hostTools = b => isHost() && b ? `<div class="host-tools">${b}</div>` : "";
@@ -547,7 +563,7 @@ function vLobby(r){
   <div class="card">
     <div class="row" style="align-items:center"><h3>שחקנים בחדר</h3><span class="chip" style="flex:0 0 auto">${n}</span></div>
     <ul class="players">${playersOf(r).map(p => `<li class="player ${p.online === false ? "off" : ""}">${av(r, p.id)}<span class="name">${esc(p.name)}</span>
-      ${p.id === me.pid ? `<span class="tag">את/ה</span>` : ""}${p.isBot ? `<span class="tag">בוט</span>` : ""}${p.id === hostOf(r) ? "👑" : ""}
+      ${p.id === me.pid ? `<span class="tag">את/ה</span>` : ""}${p.isBot ? `<span class="tag">בוט</span>` : ""}${p.lvl && !p.isBot ? `<span class="tag">⭐ ${+p.lvl}</span>` : ""}${p.id === hostOf(r) ? "👑" : ""}
       ${host && p.id !== me.pid ? `<button class="x" data-act="kick" data-id="${esc(p.id)}" aria-label="הסר">✕</button>` : ""}</li>`).join("")}</ul>
     ${host ? `<button class="btn small" data-act="bot">🤖 הוסף בוט${B.kind === "sim" ? " לבדיקה" : " (לשחק לבד או להשלים שחקנים)"}</button>` : ""}
   </div>

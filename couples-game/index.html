@@ -21,6 +21,7 @@ const firebaseConfig = {
   appId: "1:929442656248:web:b012bacf8aa7d91f7cf00d"
 };
 </script>
+<script src="../shared/party.js"></script>
 <style>
 /* Layout: one phone column on a wine-red stage; each couple is a paired card with a heart seam; answers are big option tiles.
    Deliberately single-theme. */
@@ -262,7 +263,7 @@ const isHost = () => room && hostOf(room) === me.pid;
 const P = (r, id) => (r?.players || {})[id];
 const nameOf = (r, id) => P(r, id)?.name || "?";
 function av(r, id, cls = ""){ const p = P(r, id) || {}; const a = Number.isInteger(p.avatar) ? p.avatar : 0;
-  return `<div class="av ${cls}" style="background:${AV_COLORS[a % AV_COLORS.length]}">${AVATARS[a % AVATARS.length]}</div>`; }
+  return `<div class="av ${cls}" style="background:${lookColor(p) || AV_COLORS[a % AV_COLORS.length]}">${lookEmoji(p) || AVATARS[a % AVATARS.length]}</div>`; }
 const dots = `<span class="dots"><span></span><span></span><span></span></span>`;
 const roundsOf = r => r.settings?.rounds || 8;
 /* couples from mutual partner picks (lobby), or the frozen list once the game started */
@@ -329,7 +330,7 @@ async function createRoom(){
   let c; for (let i = 0; i < 10; i++){ c = Array.from({ length: 4 }, () => CODE_CHARS[rnd(CODE_CHARS.length)]).join(""); if (!(await B.exists(c))) break; }
   const now = B.now();
   await B.create(c, { game: "couples", createdAt: now, hostPid: me.pid, phase: "lobby", round: 0, settings: { rounds: 8 },
-    players: { [me.pid]: { name: me.name, score: 0, joinedAt: now, online: true, avatar: rnd(AVATARS.length) } } });
+    players: { [me.pid]: { ...LOOK(), name: me.name, score: 0, joinedAt: now, online: true, avatar: rnd(AVATARS.length) } } });
   ui.busy = false; enterRoom(c);
 }
 async function joinRoom(c){
@@ -343,11 +344,11 @@ async function joinRoom(c){
     r.players = r.players || {};
     for (const [id, p] of Object.entries(r.players)) if (!p || !p.name) delete r.players[id];
     const mine = r.players[me.pid];
-    if (mine && Number.isInteger(mine.avatar)){ mine.name = me.name; mine.online = true; return; }
+    if (mine && Number.isInteger(mine.avatar)){ Object.assign(mine, LOOK()); mine.name = me.name; mine.online = true; return; }
     if (Object.keys(r.players).length >= 16) return false;
     const used = new Set(Object.values(r.players).map(p => p.avatar)); let a = rnd(AVATARS.length);
     for (let i = 0; i < AVATARS.length && used.has(a); i++) a = (a + 1) % AVATARS.length;
-    r.players[me.pid] = { name: me.name, score: 0, joinedAt: now, online: true, avatar: a };
+    r.players[me.pid] = { ...LOOK(), name: me.name, score: 0, joinedAt: now, online: true, avatar: a };
   });
   ui.busy = false; if (!ok){ render(); return toast("החדר מלא"); }
   enterRoom(c);
@@ -364,15 +365,30 @@ async function leaveRoom(){
   try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
   stopConfetti(); render();
 }
+/* ---- shared profile (shared/party.js): my look, sounds and end-of-game rewards ---- */
+const PARTY = window.Party || null;
+const SAFE_COLOR = /^(#[0-9a-fA-F]{3,8}|linear-gradient\([#0-9a-zA-Z,.%() -]{1,120}\))$/;
+function LOOK(){ if (!PARTY) return {}; const x = PARTY.extras(); const o = {};
+  if (typeof x.emoji === "string" && x.emoji.length <= 8) o.emoji = x.emoji; if (SAFE_COLOR.test(x.color || "")) o.color = x.color; if (Number.isInteger(x.lvl)) o.lvl = x.lvl; return o; }
+const lookColor = p => (p && SAFE_COLOR.test(p.color || "")) ? p.color : null;
+const lookEmoji = p => (p && typeof p.emoji === "string" && p.emoji.length <= 8) ? esc(p.emoji) : null;
+function finalAward(r){
+  if (!PARTY || !r || !r.players?.[me.pid]) return;
+  const ps = Object.values(r.players).filter(p => p && p.name);
+  const max = Math.max(0, ...ps.map(p => +p.score || 0)), mine = +r.players[me.pid].score || 0;
+  const win = max > 0 && mine === max;
+  const key = (typeof KEY === "function" ? KEY(code) : code) + ":" + r.createdAt + ":" + ps.map(p => p.score || 0).join(",") + ":" + (r.round || 0);
+  if (PARTY.award({ key, xp: 40 + (win ? 60 : 0), coins: 20 + (win ? 50 : 0), win })) PARTY.sound(win ? "win" : "reveal");
+}
 function onRoom(){
   if (room && !room.players?.[me.pid]?.name){ toast("יצאת מהחדר"); leaveRoom(); return; }
   if (room){
     const k = room.phase + ":" + room.round;
     if (room.phase === "answer" && ui.qKey === k && ui.q && ui.q !== room.q) toast("🔄 שאלה חדשה!");
     ui.qKey = k; ui.q = room.q;
-    if (k !== ui.phaseKey){ ui.phaseKey = k; ui.choice = null; window.scrollTo({ top: 0, behavior: "smooth" }); if (room.phase !== "final") stopConfetti();
+    if (k !== ui.phaseKey){ ui.phaseKey = k; window.Party?.sound({ reveal: "reveal", results: "reveal", scored: "reveal", voting: "go", rating: "go", answer: "go", writing: "go", challenge: "go", picking: "go", countdown: "lock" }[room.phase]); ui.choice = null; window.scrollTo({ top: 0, behavior: "smooth" }); if (room.phase !== "final") stopConfetti();
       if (room.phase === "reveal") try { navigator.vibrate?.([120, 60, 220]); } catch(e){} }
-    if (room.phase === "final") startConfetti();
+    if (room.phase === "final"){ startConfetti(); finalAward(room); }
   }
   render(); driveBots();
 }
@@ -416,7 +432,7 @@ setInterval(() => {
   if (!room || !B) return;
   if (room.phase === "countdown"){
     const left = room.countdownAt + 3000 - B.now(); const el = $("#cd"); const n = Math.max(1, Math.ceil(left / 1000));
-    if (el && el.textContent !== String(n)){ el.textContent = n; el.classList.remove("tick"); void el.offsetWidth; el.classList.add("tick"); try { navigator.vibrate?.(50); } catch(e){} }
+    if (el && el.textContent !== String(n)){ el.textContent = n; el.classList.remove("tick"); void el.offsetWidth; el.classList.add("tick"); try { navigator.vibrate?.(50); } catch(e){} window.Party?.sound("tick"); }
     const k = room.round + ":" + room.countdownAt; if (left <= 0 && revealAsked !== k){ revealAsked = k; act(A.reveal); }
   }
   if (room.phase === "answer" && isHost() && Object.keys(room.answers || {}).length && !pendingOf(room).length) act(r => { maybeCountdown(r, B.now()); if (r.phase !== "countdown") return false; });
@@ -476,7 +492,7 @@ function topbar(){
     <span class="chip code">${esc(code)}</span>
     ${inGame ? `<span class="chip">סיבוב ${Math.min(r.round, roundsOf(r))}/${roundsOf(r)}</span>` : ""}
     ${r.phase !== "lobby" && c ? `<span class="chip">💞 ${(r.cscore || {})[ckey(c)] || 0}</span>` : ""}
-    <button class="chip ghost" data-act="leave">יציאה</button></div>`;
+    ${PARTY ? `<button class="chip ghost" data-act="mute" aria-label="צלילים">${PARTY.load().muted ? "🔇" : "🔊"}</button>` : ""}<button class="chip ghost" data-act="leave">יציאה</button></div>`;
 }
 function vLobby(r){
   const host = isHost(), mine = P(r, me.pid)?.partner, cs = pairsFromPlayers(r);
