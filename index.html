@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--ARTIFACT-START-->
+<title>WhiteSpace Pro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&family=Rubik:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: Bento-Grid Intelligence — a 12-column grid of rounded white blocks on cool grey;
+   money left on the floor is always a dashed electric-blue block. */
+:root {
+  --bg: #F1F5F9;
+  --card: #FFFFFF;
+  --line: #E2E8F0;
+  --line-2: #CBD5E1;
+  --ink: #0F172A;
+  --ink-2: #334155;
+  --muted: #64748B;
+  --accent: #2563EB;
+  --accent-ink: #FFFFFF;
+  --ws-bg: #EFF6FF;
+  --ws-ink: #1D4ED8;
+  --strong-bg: #DCFCE7;
+  --strong-ink: #166534;
+  --weak-bg: #FEF3C7;
+  --weak-ink: #92400E;
+  --none-ink: #94A3B8;
+  --chip: #F1F5F9;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px -12px rgba(15, 23, 42, .12);
+  --overlay: rgba(15, 23, 42, .42);
+  --f-display: "Rubik", "Heebo", "Segoe UI", Arial, sans-serif;
+  --f-body: "Heebo", "Segoe UI", Arial, sans-serif;
+  --r: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1220; --card: #111A2E; --line: #1E2B44; --line-2: #2B3B5A;
+    --ink: #E2E8F0; --ink-2: #CBD5E1; --muted: #8B9BB4;
+    --accent: #60A5FA; --accent-ink: #0B1220; --ws-bg: rgba(59, 130, 246, .13); --ws-ink: #93C5FD;
+    --strong-bg: rgba(34, 197, 94, .16); --strong-ink: #86EFAC;
+    --weak-bg: rgba(245, 158, 11, .16); --weak-ink: #FCD34D;
+    --none-ink: #475569; --chip: #172238;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
+    --overlay: rgba(2, 6, 23, .66);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B1220; --card: #111A2E; --line: #1E2B44; --line-2: #2B3B5A;
+  --ink: #E2E8F0; --ink-2: #CBD5E1; --muted: #8B9BB4;
+  --accent: #60A5FA; --accent-ink: #0B1220; --ws-bg: rgba(59, 130, 246, .13); --ws-ink: #93C5FD;
+  --strong-bg: rgba(34, 197, 94, .16); --strong-ink: #86EFAC;
+  --weak-bg: rgba(245, 158, 11, .16); --weak-ink: #FCD34D;
+  --none-ink: #475569; --chip: #172238;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
+  --overlay: rgba(2, 6, 23, .66);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.5; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--card); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.num { font-variant-numeric: tabular-nums; unicode-bidi: isolate; direction: ltr; display: inline-block; }
+.eyebrow { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+
+/* ---------- Header + progress ---------- */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--card); border-bottom: 1px solid var(--line); }
+.topbar-in { max-width: 1440px; margin: 0 auto; padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo { width: 34px; height: 34px; border-radius: 10px; border: 2px dashed var(--accent); background: var(--ws-bg); display: grid; place-items: center; }
+.logo i { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); display: block; }
+.brand h1 { font-size: 19px; font-weight: 800; }
+.brand small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: -2px; }
+.progress { flex: 1 1 360px; min-width: 0; display: grid; gap: 6px; }
+.progress-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.progress-head b { font-family: var(--f-display); font-weight: 700; }
+.track { height: 10px; border-radius: 999px; background: var(--chip); overflow: hidden; display: flex; }
+.track span { display: block; height: 100%; transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.track .t-done { background: var(--strong-ink); }
+.track .t-target { background: var(--accent); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-inline-end: 6px; vertical-align: middle; }
+.data-pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--chip); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+
+/* ---------- Bento ---------- */
+.wrap { max-width: 1440px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.blk { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; min-width: 0; }
+.blk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.blk-head h2 { font-size: 16px; font-weight: 700; }
+.blk-head p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.c-12 { grid-column: span 12; } .c-8 { grid-column: span 8; } .c-6 { grid-column: span 6; } .c-5 { grid-column: span 5; }
+.c-4 { grid-column: span 4; } .c-3 { grid-column: span 3; } .c-7 { grid-column: span 7; }
+@media (max-width: 1180px) {
+  .c-8, .c-7, .c-5 { grid-column: span 12; } .c-4 { grid-column: span 6; } .c-3 { grid-column: span 6; }
+}
+@media (max-width: 720px) {
+  .bento { grid-template-columns: minmax(0, 1fr); }
+  .bento > * { grid-column: auto !important; }
+  .topbar-in { gap: 12px; }
+}
+
+/* Money-on-the-floor hero tile */
+.floor { border: 2px dashed var(--accent); background: var(--ws-bg); display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
+.floor .big { font-family: var(--f-display); font-weight: 800; font-size: clamp(38px, 5vw, 56px); line-height: 1; color: var(--ws-ink); }
+.floor .sub { display: flex; gap: 22px; flex-wrap: wrap; color: var(--ink-2); }
+.floor .sub b { font-family: var(--f-display); font-size: 18px; display: block; color: var(--ink); }
+.kpi { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.kpi .v { font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 1.1; }
+.kpi .v.num { text-align: right; }
+.kpi .d { font-size: 12.5px; color: var(--muted); }
+
+/* Filters */
+.filters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: end; }
+@media (max-width: 1180px) { .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .filters { grid-template-columns: minmax(0, 1fr); } }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label { font-size: 12px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.field label output { color: var(--ink); font-family: var(--f-display); }
+select, input[type="search"], input[type="text"] { width: 100%; height: 38px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--card); padding: 0 10px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); height: 38px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { border: 1px solid var(--line-2); background: var(--card); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.btn { height: 38px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--card); padding: 0 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+.btn:hover { border-color: var(--ink-2); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn-primary:hover { filter: brightness(1.06); border-color: var(--accent); }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--muted); }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.check { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+/* Bars */
+.bars { display: grid; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: minmax(84px, 120px) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+.bar-row button { all: unset; cursor: pointer; display: contents; }
+.bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.bar-track { height: 22px; border-radius: 6px; background: var(--chip); overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); border-radius: 6px; min-width: 2px; transition: width .5s; }
+.bar-fill.alt { background: var(--ink-2); }
+.bar-val { font-family: var(--f-display); font-weight: 600; min-width: 64px; text-align: end; }
+
+/* Matrix */
+.mx-wrap { overflow: auto; max-height: 640px; border: 1px solid var(--line); border-radius: 12px; }
+table.mx { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+.mx th, .mx td { padding: 4px; border-bottom: 1px solid var(--line); background: var(--card); }
+.mx thead th { position: sticky; top: 0; z-index: 2; font-weight: 600; font-size: 12px; vertical-align: bottom; text-align: center; }
+.mx thead tr.fam th { top: 0; z-index: 3; font-size: 11px; color: var(--muted); border-bottom: 0; padding-top: 8px; }
+.mx thead tr.sku th { top: 27px; }
+.mx th.fam-cell { border-inline-start: 1px solid var(--line); }
+.mx .rowh { position: sticky; inset-inline-start: 0; z-index: 1; text-align: start; min-width: 210px; max-width: 230px; padding: 8px 10px; border-inline-end: 1px solid var(--line); }
+.mx thead .rowh { z-index: 4; }
+.rowh .st { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rowh .meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 6px; align-items: center; white-space: nowrap; overflow: hidden; }
+.score { font-family: var(--f-display); font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--ws-bg); color: var(--ws-ink); }
+.sku-h { display: block; width: 96px; margin: 0 auto; line-height: 1.25; padding: 4px 2px; }
+.sku-h .hero { color: var(--accent); font-size: 10.5px; font-weight: 700; display: block; }
+.cell { width: 96px; height: 48px; border-radius: 10px; border: 1px solid transparent; display: grid; place-items: center; align-content: center; font-size: 12.5px; line-height: 1.15; background: transparent; padding: 0; }
+.cell small { display: block; font-size: 10.5px; opacity: .85; }
+.cell.strong { background: var(--strong-bg); color: var(--strong-ink); font-weight: 600; }
+.cell.active { background: var(--chip); color: var(--ink-2); }
+.cell.weak { background: var(--weak-bg); color: var(--weak-ink); }
+.cell.none { color: var(--none-ink); }
+.cell.ws { border: 2px dashed var(--accent); background: var(--ws-bg); color: var(--ws-ink); font-weight: 700; transition: transform .15s, box-shadow .15s; }
+.cell.ws:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -8px var(--accent); }
+.cell.ws.target { border-style: solid; background: var(--accent); color: var(--accent-ink); }
+.cell.ws.listed { border-style: solid; border-color: var(--strong-ink); background: var(--strong-bg); color: var(--strong-ink); }
+.cell.ws.rejected { border: 1px dashed var(--line-2); background: transparent; color: var(--none-ink); text-decoration: line-through; font-weight: 400; }
+.mx-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
+.mx-legend span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 18px; height: 12px; border-radius: 4px; display: inline-block; }
+.sw.strong { background: var(--strong-bg); border: 1px solid var(--strong-ink); }
+.sw.active { background: var(--chip); border: 1px solid var(--line-2); }
+.sw.weak { background: var(--weak-bg); border: 1px solid var(--weak-ink); }
+.sw.ws { background: var(--ws-bg); border: 2px dashed var(--accent); }
+.sw.target { background: var(--accent); }
+.empty { padding: 32px; text-align: center; color: var(--muted); }
+
+/* Opportunity list */
+.tbl-wrap { overflow-x: auto; }
+table.opp { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 860px; }
+.opp th { text-align: start; font-size: 12px; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.opp th button { all: unset; cursor: pointer; }
+.opp th button[aria-sort]::after { content: " ↓"; }
+.opp td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.opp tbody tr { cursor: pointer; }
+.opp tbody tr:hover td { background: var(--ws-bg); }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.pill.new { background: var(--ws-bg); color: var(--ws-ink); border: 1px dashed var(--accent); }
+.pill.target { background: var(--accent); color: var(--accent-ink); }
+.pill.listed { background: var(--strong-bg); color: var(--strong-ink); }
+.pill.rejected { background: var(--chip); color: var(--muted); }
+.mini { height: 6px; border-radius: 99px; background: var(--chip); width: 70px; overflow: hidden; display: inline-block; vertical-align: middle; margin-inline-start: 6px; }
+.mini i { display: block; height: 100%; background: var(--ink-2); }
+
+/* Clusters + top list */
+.list { display: grid; gap: 8px; }
+.li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); text-align: start; width: 100%; }
+.li:hover { border-color: var(--accent); }
+.li[aria-pressed="true"] { border: 2px dashed var(--accent); background: var(--ws-bg); padding: 9px 11px; }
+.li b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.li .r { font-family: var(--f-display); font-weight: 700; color: var(--ws-ink); }
+.li .m { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+
+details.method summary { cursor: pointer; font-family: var(--f-display); font-weight: 700; font-size: 15px; }
+details.method ol { margin: 12px 0 0; padding-inline-start: 20px; display: grid; gap: 8px; color: var(--ink-2); max-width: 90ch; }
+code { font-size: 12px; background: var(--chip); padding: 1px 6px; border-radius: 6px; direction: ltr; unicode-bidi: isolate; }
+.err { color: var(--weak-ink); background: var(--weak-bg); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+
+/* Quick Action Card */
+.qa-overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 50; display: flex; align-items: center; justify-content: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.qa { width: min(640px, 100%); max-height: 100%; overflow: auto; background: var(--card); border-radius: 20px; border: 2px dashed var(--accent); box-shadow: var(--shadow); padding: 22px; display: grid; gap: 16px; animation: pop .18s ease-out; }
+@keyframes pop { from { transform: translateY(8px) scale(.98); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .qa, .track span, .bar-fill, .cell.ws { animation: none; transition: none; } }
+@media (max-width: 560px) { .qa-overlay { align-items: flex-end; padding-bottom: 0; } .qa { border-radius: 20px 20px 0 0; padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px)); } }
+.qa-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.qa-head h3 { font-size: 20px; font-weight: 700; }
+.qa-head p { margin: 4px 0 0; color: var(--muted); }
+.x { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 18px; line-height: 1; flex: none; }
+.qa-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.qa-tile { background: var(--ws-bg); border-radius: 12px; padding: 12px; }
+.qa-tile .v { font-family: var(--f-display); font-weight: 800; font-size: 22px; color: var(--ws-ink); }
+.qa-tile .l { font-size: 12px; color: var(--muted); }
+@media (max-width: 420px) { .qa-tiles { grid-template-columns: minmax(0, 1fr); } }
+.why { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.why li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; color: var(--ink-2); }
+.why li::before { content: attr(data-n); width: 22px; height: 22px; border-radius: 7px; background: var(--chip); font-family: var(--f-display); font-weight: 700; font-size: 12px; display: grid; place-items: center; color: var(--ink); }
+.peer-bars { display: grid; gap: 6px; }
+.peer-bars .bar-row { grid-template-columns: minmax(90px, 150px) minmax(0, 1fr) 52px; font-size: 12.5px; }
+.peer-bars .bar-track { height: 14px; }
+.bar-fill.exp { background: repeating-linear-gradient(135deg, var(--accent) 0 6px, var(--ws-bg) 6px 9px); border: 1px solid var(--accent); }
+.qa-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 14px; }
+
+.toast { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 10px 16px; border-radius: 12px; z-index: 60; font-weight: 600; box-shadow: var(--shadow); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+<!--ARTIFACT-HEAD-END-->
+</head>
+<body>
+<!--ARTIFACT-BODY-START-->
+<div id="app" dir="rtl" lang="he">
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><i></i></div>
+        <div><h1>WhiteSpace Pro</h1><small>זיהוי פערי הפצה והזדמנויות מכירה</small></div>
+      </div>
+      <div class="progress" aria-live="polite">
+        <div class="progress-head">
+          <span>יעדים לסוכנים: <b id="pg-count">0</b> מתוך <b id="pg-total">0</b> הזדמנויות</span>
+          <span><b id="pg-money">₪0</b> מתוך <b id="pg-money-total">₪0</b> פוטנציאל חודשי</span>
+        </div>
+        <div class="track" role="progressbar" aria-label="התקדמות טיפול בהזדמנויות" id="pg-bar" aria-valuemin="0" aria-valuemax="100">
+          <span class="t-done" id="pg-done" style="width:0"></span><span class="t-target" id="pg-target" style="width:0"></span>
+        </div>
+        <div class="legend"><span><i style="background:var(--strong-ink)"></i>הוכנס לסניף</span><span><i style="background:var(--accent)"></i>יעד לסוכן</span><span><i style="background:var(--chip);border:1px solid var(--line-2)"></i>פתוח</span></div>
+      </div>
+      <span class="data-pill" id="data-pill">נתוני הדגמה</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="bento">
+      <!-- Hero: money on the floor -->
+      <section class="blk floor c-5" aria-labelledby="floor-h">
+        <div>
+          <div class="eyebrow" id="floor-h">כסף על הרצפה · תוספת מכירות חודשית צפויה</div>
+          <div class="big num" id="k-uplift">₪0</div>
+        </div>
+        <div class="sub">
+          <div><b class="num" id="k-units">0</b>יחידות בחודש</div>
+          <div><b class="num" id="k-annual">₪0</b>בשנה</div>
+          <div><b class="num" id="k-share">0%</b>מסך המכירות הנוכחיות</div>
+        </div>
+      </section>
+      <section class="blk kpi c-3">
+        <div class="eyebrow">הזדמנויות White Space</div>
+        <div class="v num" id="k-opps">0</div>
+        <div class="d" id="k-opps-d">שילובי סניף × מוצר חסר</div>
+      </section>
+      <section class="blk kpi c-4">
+        <div class="eyebrow">סניפים עם פער מגוון</div>
+        <div class="v"><span class="num" id="k-stores">0</span> <span style="font-size:16px;color:var(--muted)">מתוך <span class="num" id="k-stores-all">0</span></span></div>
+        <div class="d">ממוצע פיזור בקבוצת הדומים: <b class="num" id="k-dist">0%</b></div>
+      </section>
+
+      <!-- Filters -->
+      <section class="blk c-12" aria-labelledby="flt-h">
+        <div class="blk-head">
+          <div><h2 id="flt-h">סינון ותעדוף</h2><p>כל הבלוקים מתעדכנים לפי הבחירה</p></div>
+          <div class="toolbar">
+            <input type="file" id="csv-file" accept=".csv,text/csv" class="sr" aria-label="טעינת קובץ CSV">
+            <button class="btn" id="btn-csv" type="button">טעינת CSV</button>
+            <button class="btn btn-ghost" id="btn-demo" type="button">נתוני הדגמה</button>
+            <button class="btn btn-ghost" id="btn-reset" type="button">איפוס סינון</button>
+          </div>
+        </div>
+        <div class="filters">
+          <div class="field"><label for="f-chain">רשת שיווק</label><select id="f-chain"></select></div>
+          <div class="field"><label for="f-cat">קטגוריית מוצר</label><select id="f-cat"></select></div>
+          <div class="field"><label for="f-cluster">קבוצת סניפים דומים</label><select id="f-cluster"></select></div>
+          <div class="field"><label for="f-min">פוטנציאל מינימלי לחודש <output id="o-min" class="num">₪0</output></label><input type="range" id="f-min" min="0" max="2500" step="50" value="0"></div>
+          <div class="field"><label for="f-thr">סף אחוזון Hero <output id="o-thr" class="num">P75</output></label><input type="range" id="f-thr" min="50" max="95" step="5" value="75"></div>
+          <div class="field"><label for="f-q">חיפוש סניף</label><input type="search" id="f-q" placeholder="שם סניף או עיר"></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:14px">
+          <span class="eyebrow">סטטוס טיפול</span>
+          <div class="seg" id="f-status" role="group" aria-label="סטטוס טיפול"></div>
+        </div>
+        <div id="csv-err" class="err" hidden style="margin-top:12px"></div>
+      </section>
+
+      <!-- Matrix -->
+      <section class="blk c-8" aria-labelledby="mx-h">
+        <div class="blk-head">
+          <div><h2 id="mx-h">מטריצת מגוון</h2><p>סניפים לפי ציון פוטנציאל · יחידות בחודש · לחיצה על בלוק מקווקו פותחת כרטיס פעולה</p></div>
+          <label class="check"><input type="checkbox" id="f-only" checked> רק סניפים עם הזדמנות</label>
+        </div>
+        <div class="mx-legend" style="margin-bottom:12px">
+          <span><i class="sw strong"></i>פעיל וחזק</span>
+          <span><i class="sw active"></i>פעיל</span>
+          <span><i class="sw weak"></i>חלש מול הדומים</span>
+          <span><i class="sw ws"></i>White Space</span>
+          <span><i class="sw target"></i>יעד לסוכן</span>
+          <span style="color:var(--none-ink)">· לא במגוון</span>
+        </div>
+        <div class="mx-wrap" id="mx"></div>
+      </section>
+
+      <!-- Side column -->
+      <div class="c-4" style="display:grid;gap:16px;align-content:start;min-width:0">
+        <section class="blk" aria-labelledby="top-h">
+          <div class="blk-head"><div><h2 id="top-h">5 ההזדמנויות הגדולות</h2><p>לפי שווי חודשי, בתוך הסינון</p></div></div>
+          <div class="list" id="top-list"></div>
+        </section>
+        <section class="blk" aria-labelledby="cl-h">
+          <div class="blk-head"><div><h2 id="cl-h">קבוצות סניפים דומים</h2><p>אשכולות לפי גודל, אזור והיקף מכירות</p></div></div>
+          <div class="list" id="cl-list"></div>
+        </section>
+      </div>
+
+      <section class="blk c-6" aria-labelledby="ch-h">
+        <div class="blk-head"><div><h2 id="ch-h">פוטנציאל לפי רשת</h2><p>₪ לחודש · לחיצה מסננת</p></div></div>
+        <div class="bars" id="bars-chain"></div>
+      </section>
+      <section class="blk c-6" aria-labelledby="fm-h">
+        <div class="blk-head"><div><h2 id="fm-h">פוטנציאל לפי משפחת מוצר</h2><p>₪ לחודש, מוצרים משלימים חסרים</p></div></div>
+        <div class="bars" id="bars-family"></div>
+      </section>
+
+      <!-- Opportunity table -->
+      <section class="blk c-12" aria-labelledby="op-h">
+        <div class="blk-head">
+          <div><h2 id="op-h">תור עדיפויות</h2><p id="op-sub">כל ההזדמנויות בתוך הסינון</p></div>
+          <div class="toolbar"><button class="btn" id="btn-copy" type="button">העתקת יעדי הסוכן (CSV)</button></div>
+        </div>
+        <div class="tbl-wrap"><table class="opp" id="opp-table"></table></div>
+        <div style="text-align:center;margin-top:12px"><button class="btn" id="btn-more" type="button" hidden>הצגת עוד</button></div>
+      </section>
+
+      <section class="blk c-12">
+        <details class="method">
+          <summary>איך מחושב ציון הפוטנציאל</summary>
+          <ol>
+            <li><b>קבוצות דומים.</b> כל סניף מקבל וקטור של גודל (מ״ר, לוג), היקף מכירות כולל (לוג) ומיקום גיאוגרפי צפון→דרום. אלגוריתם k-means מחלק את הסניפים ל־k קבוצות (k≈√(n/2)).</li>
+            <li><b>Hero חזק.</b> לכל משפחת מוצרים מחושב האחוזון של מוצר ה־Hero בתוך קבוצת הדומים. סניף נכנס לבדיקה רק אם ה־Hero מעל הסף שנבחר (ברירת מחדל P75).</li>
+            <li><b>פער מגוון.</b> מוצר משלים מאותה משפחה שאינו במגוון הסניף, או רשום ונמכר באפס יחידות, הוא מועמד White Space.</li>
+            <li><b>שווי הזדמנות.</b> ממוצע היחידות בסניפים הדומים <u>באותה רשת</u> שמוכרים את המוצר (לפחות 3; אחרת כל הקבוצה), מותאם ליחס היקף המכירות של הסניף מול הדומים (0.75–1.25), כפול מחיר לצרכן.</li>
+            <li><b>ציון 0–100.</b> 45% דירוג שווי ההזדמנות, 35% אחוזון ה־Hero, 20% שיעור הפיזור של המוצר אצל הדומים.</li>
+          </ol>
+          <p style="color:var(--muted);margin:14px 0 0">פורמט CSV לטעינה (שורה לכל סניף × מוצר, חודש אחד): <code>chain,store,region,size_sqm,category,family,sku,is_hero,price,units</code>. מוצר שאינו במגוון הסניף פשוט לא מופיע בשורות.</p>
+        </details>
+      </section>
+    </div>
+  </main>
+
+  <div class="qa-overlay" id="qa-overlay" hidden>
+    <div class="qa" role="dialog" aria-modal="true" aria-labelledby="qa-title" id="qa"></div>
+  </div>
+  <div class="toast" id="toast" hidden role="status"></div>
+</div>
+
+<script>
+document.documentElement.setAttribute('dir', 'rtl');
+document.documentElement.setAttribute('lang', 'he');
+
+/* ================= Utilities ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ils = n => '₪' + Math.round(n).toLocaleString('he-IL');
+const ilsK = n => n >= 1e6 ? '₪' + (n / 1e6).toFixed(2) + 'M' : n >= 1e4 ? '₪' + (n / 1e3).toFixed(0) + 'K' : n >= 1e3 ? '₪' + (n / 1e3).toFixed(1) + 'K' : ils(n);
+const int = n => Math.round(n).toLocaleString('he-IL');
+const pct = n => Math.round(n * 100) + '%';
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+const median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function rng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
+};
+
+/* ================= Demo data (fictional chains & products) ================= */
+const REGION_GEO = { 'צפון': 0, 'חיפה והקריות': .22, 'שרון': .42, 'מרכז': .5, 'ירושלים': .64, 'שפלה': .7, 'דרום': 1 };
+function demoData() {
+  const r = rng(20261124);
+  const gauss = () => { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const pick = a => a[Math.floor(r() * a.length)];
+  const chains = [
+    { name: 'מגה־מרקט', f: 1.15, dist: .80 }, { name: 'שוק העיר', f: .95, dist: .62 },
+    { name: 'פרש פוינט', f: 1.0, dist: .70 }, { name: 'סיטי מרקט', f: .85, dist: .56 }
+  ];
+  const regions = [
+    ['צפון', ['נהריה', 'כרמיאל', 'עפולה', 'טבריה', 'קריית שמונה'], .14], ['חיפה והקריות', ['חיפה', 'קריית אתא', 'קריית ביאליק', 'נשר'], .12],
+    ['שרון', ['נתניה', 'כפר סבא', 'רעננה', 'הרצליה'], .14], ['מרכז', ['פתח תקווה', 'ראשון לציון', 'חולון', 'רמת גן', 'בת ים'], .22],
+    ['ירושלים', ['ירושלים', 'מבשרת ציון', 'בית שמש'], .12], ['שפלה', ['רחובות', 'מודיעין', 'נס ציונה', 'רמלה'], .1],
+    ['דרום', ['באר שבע', 'אשדוד', 'אשקלון', 'קריית גת'], .16]
+  ];
+  const fams = [
+    { cat: 'חטיפים מלוחים', fam: 'קראנצ׳י תירס', items: [['קראנצ׳י קלאסי 70 ג׳', 5.9, 300, 1], ['קראנצ׳י חריף 70 ג׳', 5.9, 120, .9], ['קראנצ׳י מארז 10', 19.9, 70, .8], ['קראנצ׳י גריל 150 ג׳', 9.9, 90, .85]] },
+    { cat: 'חטיפים מלוחים', fam: 'פריכיות שדה', items: [['פריכיות אורז מלא', 8.9, 160, 1], ['פריכיות קינואה', 11.9, 55, .75], ['פריכיות שוקולד מריר', 12.9, 70, .8]] },
+    { cat: 'משקאות', fam: 'תה קר הדר', items: [['תה קר אפרסק 1.5 ל׳', 8.5, 240, 1], ['תה קר לימון 1.5 ל׳', 8.5, 130, .95], ['תה קר דל סוכר 1.5 ל׳', 8.9, 80, .75], ['תה קר מארז 6×330', 24.9, 45, .7]] },
+    { cat: 'משקאות', fam: 'מוגזים צלול', items: [['צלול לימון 1.5 ל׳', 5.5, 280, 1], ['צלול אשכולית 1.5 ל׳', 5.5, 110, .85], ['צלול מארז 6', 29.9, 40, .7]] },
+    { cat: 'חלב ומקרר', fam: 'יווני גבעה', items: [['יווני 0% 200 ג׳', 6.9, 260, 1], ['יווני דבש 200 ג׳', 7.5, 120, .85], ['יווני מארז 4', 23.9, 50, .7], ['יווני 1 ק״ג', 21.9, 40, .65]] },
+    { cat: 'חלב ומקרר', fam: 'חומוס הבית', items: [['חומוס קלאסי 400 ג׳', 9.9, 220, 1], ['חומוס צנוברים 400 ג׳', 12.9, 80, .8], ['חומוס חריף 400 ג׳', 10.9, 75, .8]] }
+  ];
+  const catRegion = { 'חטיפים מלוחים': { 'דרום': 1.15, 'צפון': 1.1 }, 'משקאות': { 'דרום': 1.2, 'מרכז': 1.05 }, 'חלב ומקרר': { 'מרכז': 1.1, 'שרון': 1.12, 'ירושלים': .9 } };
+  const rows = [];
+  const used = new Set();
+  for (let i = 0; i < 66; i++) {
+    const ch = chains[i % chains.length];
+    let x = r(), reg = regions[0];
+    for (const g of regions) { if ((x -= g[2]) <= 0) { reg = g; break; } }
+    const city = pick(reg[1]);
+    let name = `${ch.name} ${city}`;
+    const suff = ['מרכז', 'צפון', 'קניון', 'דרום', 'מערב', 'החדש'];
+    for (let s = 0; used.has(name); s++) name = `${ch.name} ${city} ${suff[s % suff.length]}${s >= suff.length ? ' ' + s : ''}`;
+    used.add(name);
+    const fmt = r();
+    const size = Math.round((fmt < .3 ? 350 + r() * 400 : fmt < .75 ? 800 + r() * 800 : 1800 + r() * 1500) / 10) * 10;
+    const traffic = .7 + r() * .75;
+    const sizeF = Math.pow(size / 1000, .8);
+    for (const f of fams) {
+      f.items.forEach(([sku, price, base, distK], idx) => {
+        const hero = idx === 0;
+        const pCarry = hero ? .97 : clamp(ch.dist * distK * (size < 800 ? .8 : 1.05), .15, .95);
+        if (r() > pCarry) return;
+        let perf = Math.exp(gauss() * .28);
+        if (r() < .1) perf *= .3;
+        const aff = (catRegion[f.cat] || {})[reg[0]] || 1;
+        let units = Math.round(base * sizeF * traffic * ch.f * aff * perf);
+        if (!hero && r() < .07) units = 0;
+        rows.push({ chain: ch.name, store: name, region: reg[0], size_sqm: size, category: f.cat, family: f.fam, sku, is_hero: hero ? 1 : 0, price, units });
+      });
+    }
+  }
+  return rows;
+}
+
+/* ================= Data model ================= */
+function buildModel(rows) {
+  const stores = new Map(), skus = new Map(), sales = new Map();
+  for (const x of rows) {
+    if (!stores.has(x.store)) stores.set(x.store, { id: x.store, name: x.store, chain: x.chain, region: x.region, size: +x.size_sqm || 0 });
+    if (!skus.has(x.sku)) skus.set(x.sku, { id: x.sku, name: x.sku, category: x.category, family: x.family, isHero: !!x.is_hero, price: +x.price || 0 });
+    else if (x.is_hero) skus.get(x.sku).isHero = true;
+    sales.set(x.store + '|' + x.sku, (sales.get(x.store + '|' + x.sku) || 0) + (+x.units || 0));
+  }
+  const S = [...stores.values()], K = [...skus.values()];
+  // families: hero first. If a family has no hero flagged, the best-selling SKU becomes hero.
+  const families = new Map();
+  for (const k of K) { if (!families.has(k.family)) families.set(k.family, { name: k.family, category: k.category, skus: [] }); families.get(k.family).skus.push(k); }
+  for (const f of families.values()) {
+    let hero = f.skus.find(k => k.isHero);
+    if (!hero) {
+      hero = f.skus.reduce((b, k) => { const t = S.reduce((s, st) => s + (sales.get(st.id + '|' + k.id) || 0), 0); return t > b.t ? { k, t } : b; }, { k: f.skus[0], t: -1 }).k;
+      hero.isHero = true;
+    }
+    f.skus.forEach(k => { if (k !== hero) k.isHero = false; });
+    f.hero = hero; f.comps = f.skus.filter(k => k !== hero);
+    f.skus = [hero, ...f.comps];
+  }
+  for (const s of S) { s.total = 0; for (const k of K) { const u = sales.get(s.id + '|' + k.id); if (u) s.total += u * k.price; } }
+  return { stores: S, skus: K, families: [...families.values()], sales, u: (s, k) => sales.get(s.id + '|' + k.id) };
+}
+
+/* ================= Clustering: k-means on size, volume, geography ================= */
+function clusterStores(S) {
+  const geo = s => REGION_GEO[s.region] ?? .5;
+  const feats = S.map(s => [Math.log(Math.max(s.size, 50)), Math.log(Math.max(s.total, 100)), geo(s)]);
+  const dims = feats[0].length;
+  for (let d = 0; d < dims; d++) {
+    const col = feats.map(f => f[d]); const m = mean(col); const sd = Math.sqrt(mean(col.map(v => (v - m) ** 2))) || 1;
+    feats.forEach(f => f[d] = (f[d] - m) / sd * (d === 2 ? .9 : 1));
+  }
+  const k = clamp(Math.round(Math.sqrt(S.length / 2)), 2, 9);
+  const dist = (a, b) => a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0);
+  let best = null;
+  for (let rs = 0; rs < 8; rs++) {
+    const r = rng(97 + rs * 13);
+    const C = [feats[Math.floor(r() * feats.length)].slice()];
+    while (C.length < k) {
+      const d2 = feats.map(f => Math.min(...C.map(c => dist(f, c))));
+      let t = r() * d2.reduce((a, b) => a + b, 0), i = 0;
+      while ((t -= d2[i]) > 0 && i < d2.length - 1) i++;
+      C.push(feats[i].slice());
+    }
+    let assign = [];
+    for (let it = 0; it < 30; it++) {
+      assign = feats.map(f => { let bi = 0, bd = Infinity; C.forEach((c, ci) => { const d = dist(f, c); if (d < bd) { bd = d; bi = ci; } }); return bi; });
+      C.forEach((c, ci) => { const m = feats.filter((_, i) => assign[i] === ci); if (m.length) for (let d = 0; d < dims; d++) c[d] = mean(m.map(f => f[d])); });
+    }
+    const inertia = feats.reduce((s, f, i) => s + dist(f, C[assign[i]]), 0);
+    if (!best || inertia < best.inertia) best = { inertia, assign };
+  }
+  // name clusters by tiers
+  const tier = (vals, v) => { const s = [...vals].sort((a, b) => a - b); const q1 = s[Math.floor(s.length / 3)], q2 = s[Math.floor(2 * s.length / 3)]; return v < q1 ? 0 : v < q2 ? 1 : 2; };
+  const sizes = S.map(s => s.size), tots = S.map(s => s.total);
+  const groups = [];
+  best.assign.forEach((ci, i) => { (groups[ci] ||= []).push(S[i]); });
+  const clusters = groups.filter(Boolean).map(g => {
+    const st = tier(sizes, median(g.map(s => s.size))), vt = tier(tots, median(g.map(s => s.total)));
+    const regs = {}; g.forEach(s => regs[s.region] = (regs[s.region] || 0) + 1);
+    const topReg = Object.entries(regs).sort((a, b) => b[1] - a[1]);
+    const regLabel = topReg[0][1] / g.length >= .6 ? topReg[0][0] : topReg.slice(0, 2).map(x => x[0]).join(' / ');
+    return { stores: g, size: g.length, label: `${['קטן', 'בינוני', 'גדול'][st]} · נפח ${['נמוך', 'בינוני', 'גבוה'][vt]} · ${regLabel}`, region: regLabel, sortKey: st * 3 + vt };
+  }).sort((a, b) => b.sortKey - a.sortKey || b.size - a.size);
+  clusters.forEach((c, i) => { c.id = 'C' + (i + 1); c.stores.forEach(s => s.cluster = c); });
+  return clusters;
+}
+
+/* ================= White Space Engine ================= */
+function runEngine(M, heroThr) {
+  const clusters = clusterStores(M.stores);
+  const opps = [];
+  const heroPct = new Map(); // store|family -> percentile
+  const peerMed = new Map(); // cluster|sku -> median units among carriers
+  for (const c of clusters) for (const k of M.skus) {
+    const v = c.stores.map(s => M.u(s, k)).filter(u => u > 0);
+    peerMed.set(c.id + '|' + k.id, v.length >= 2 ? median(v) : median(M.stores.map(s => M.u(s, k)).filter(u => u > 0)));
+  }
+  for (const f of M.families) for (const c of clusters) {
+    const vals = c.stores.map(s => M.u(s, f.hero) || 0);
+    for (const s of c.stores) {
+      const v = M.u(s, f.hero) || 0;
+      const below = vals.filter(x => x < v).length, eq = vals.filter(x => x === v).length;
+      heroPct.set(s.id + '|' + f.name, vals.length > 1 ? Math.round(100 * (below + .5 * (eq - 1)) / (vals.length - 1)) : 50);
+    }
+  }
+  for (const s of M.stores) {
+    const c = s.cluster;
+    for (const f of M.families) {
+      const hu = M.u(s, f.hero) || 0, hp = heroPct.get(s.id + '|' + f.name);
+      if (!hu || hp < heroThr) continue;
+      for (const k of f.comps) {
+        const u = M.u(s, k);
+        if (u > 0) continue;
+        let pool = c.stores.filter(p => p !== s && p.chain === s.chain), basis = 'chain';
+        let carriers = pool.filter(p => M.u(p, k) > 0);
+        if (carriers.length < 3) { pool = c.stores.filter(p => p !== s); carriers = pool.filter(p => M.u(p, k) > 0); basis = 'cluster'; }
+        if (carriers.length < 2) continue;
+        const avg = mean(carriers.map(p => M.u(p, k)));
+        const vf = clamp(s.total / mean(carriers.map(p => p.total)), .75, 1.25);
+        const units = avg * vf;
+        opps.push({
+          key: s.id + '|' + k.id, store: s, sku: k, family: f, heroUnits: hu, heroPct: hp, listedZero: u === 0,
+          basis, carriers, poolSize: pool.length, dist: carriers.length / pool.length, avg, vf, units, rev: units * k.price
+        });
+      }
+    }
+  }
+  const sorted = [...opps].sort((a, b) => a.rev - b.rev);
+  sorted.forEach((o, i) => { o.upRank = opps.length > 1 ? i / (opps.length - 1) : 1; });
+  opps.forEach(o => { o.score = Math.round(100 * (.45 * o.upRank + .35 * o.heroPct / 100 + .2 * o.dist)); });
+  const byKey = new Map(opps.map(o => [o.key, o]));
+  const storeRev = new Map();
+  opps.forEach(o => storeRev.set(o.store.id, (storeRev.get(o.store.id) || 0) + o.rev));
+  const maxRev = Math.max(1, ...storeRev.values());
+  M.stores.forEach(s => s.potential = Math.round(100 * Math.sqrt((storeRev.get(s.id) || 0) / maxRev)));
+  return { clusters, opps, byKey, heroPct, peerMed };
+}
+
+/* ================= State ================= */
+const STATUS = { new: 'חדש', target: 'יעד לסוכן', listed: 'הוכנס', rejected: 'נדחה' };
+const F0 = { chain: 'all', cat: 'all', cluster: 'all', min: 0, thr: 75, q: '', status: 'all', only: true };
+let F = { ...F0, ...store.get('wsp.filters', {}) };
+let statuses = store.get('wsp.status', {});
+let M, E, isDemo = true, sortBy = 'rev', shown = 25;
+const st = o => statuses[o.key] || 'new';
+
+function load(rows, demo) {
+  M = buildModel(rows); isDemo = demo;
+  $('#data-pill').textContent = demo ? 'נתוני הדגמה · ' + M.stores.length + ' סניפים' : 'קובץ שנטען · ' + M.stores.length + ' סניפים';
+  compute();
+}
+function compute() { E = runEngine(M, F.thr); buildFilterOptions(); render(); }
+
+function buildFilterOptions() {
+  const chains = [...new Set(M.stores.map(s => s.chain))];
+  const cats = [...new Set(M.families.map(f => f.category))];
+  if (F.chain !== 'all' && !chains.includes(F.chain)) F.chain = 'all';
+  if (F.cat !== 'all' && !cats.includes(F.cat)) F.cat = 'all';
+  if (F.cat === 'all' && !store.get('wsp.filters', null)) F.cat = cats[0];
+  if (F.cluster !== 'all' && !E.clusters.some(c => c.id === F.cluster)) F.cluster = 'all';
+  $('#f-chain').innerHTML = `<option value="all">כל הרשתות</option>` + chains.map(c => `<option${c === F.chain ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  $('#f-cat').innerHTML = `<option value="all">כל הקטגוריות</option>` + cats.map(c => `<option${c === F.cat ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  $('#f-cluster').innerHTML = `<option value="all">כל הקבוצות</option>` + E.clusters.map(c => `<option value="${c.id}"${c.id === F.cluster ? ' selected' : ''}>${c.id} · ${esc(c.label)} (${c.size})</option>`).join('');
+  $('#f-status').innerHTML = [['all', 'הכל'], ...Object.entries(STATUS)].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${F.status === v}">${l}</button>`).join('');
+  $('#f-min').value = F.min; $('#f-thr').value = F.thr; $('#f-q').value = F.q; $('#f-only').checked = F.only;
+  $('#o-min').textContent = ils(F.min); $('#o-thr').textContent = 'P' + F.thr;
+}
+
+const storeMatch = s => (F.chain === 'all' || s.chain === F.chain) && (F.cluster === 'all' || s.cluster.id === F.cluster)
+  && (!F.q || s.name.includes(F.q) || s.region.includes(F.q));
+const oppMatch = o => storeMatch(o.store) && (F.cat === 'all' || o.sku.category === F.cat) && o.rev >= F.min && (F.status === 'all' || st(o) === F.status);
+
+/* ================= Render ================= */
+function render() {
+  store.set('wsp.filters', F);
+  const list = E.opps.filter(oppMatch);
+  renderProgress(); renderKpis(list); renderMatrix(list); renderTop(list); renderClusters(); renderBars(list); renderTable(list);
+}
+
+function renderProgress() {
+  const all = E.opps.filter(o => st(o) !== 'rejected');
+  const total = all.reduce((s, o) => s + o.rev, 0);
+  const tg = all.filter(o => st(o) === 'target'), dn = all.filter(o => st(o) === 'listed');
+  const tv = tg.reduce((s, o) => s + o.rev, 0), dv = dn.reduce((s, o) => s + o.rev, 0);
+  $('#pg-count').textContent = int(tg.length + dn.length); $('#pg-total').textContent = int(all.length);
+  $('#pg-money').textContent = ilsK(tv + dv); $('#pg-money-total').textContent = ilsK(total);
+  $('#pg-target').style.width = (total ? 100 * tv / total : 0) + '%';
+  $('#pg-done').style.width = (total ? 100 * dv / total : 0) + '%';
+  $('#pg-bar').setAttribute('aria-valuenow', Math.round(total ? 100 * (tv + dv) / total : 0));
+}
+
+function renderKpis(list) {
+  const rev = list.reduce((s, o) => s + o.rev, 0), units = list.reduce((s, o) => s + o.units, 0);
+  const storesIn = M.stores.filter(storeMatch);
+  const base = storesIn.reduce((s, x) => s + x.total, 0);
+  $('#k-uplift').textContent = ils(rev);
+  $('#k-units').textContent = int(units); $('#k-annual').textContent = ilsK(rev * 12);
+  $('#k-share').textContent = base ? '+' + (100 * rev / base).toFixed(1) + '%' : '—';
+  $('#k-opps').textContent = int(list.length);
+  $('#k-opps-d').textContent = list.length ? `ממוצע ${ils(rev / list.length)} להזדמנות בחודש` : 'אין הזדמנויות בסינון הנוכחי';
+  $('#k-stores').textContent = int(new Set(list.map(o => o.store.id)).size); $('#k-stores-all').textContent = int(storesIn.length);
+  $('#k-dist').textContent = list.length ? pct(mean(list.map(o => o.dist))) : '—';
+}
+
+function cellFor(s, k) {
+  const o = E.byKey.get(s.id + '|' + k.id);
+  const u = M.u(s, k);
+  if (o) {
+    const ok = oppMatch(o);
+    if (ok) {
+      const stt = st(o), cls = stt === 'new' ? '' : ' ' + stt;
+      const top = stt === 'target' ? '✓ יעד' : stt === 'listed' ? 'הוכנס' : stt === 'rejected' ? 'נדחה' : '<span class="num">+' + ilsK(o.rev) + '</span>';
+      return `<button class="cell ws${cls}" data-opp="${esc(o.key)}" aria-label="הזדמנות: ${esc(k.name)} ב${esc(s.name)}, ${ils(o.rev)} לחודש">${top}<small><span class="num">${int(o.units)}</span> יח׳ צפי</small></button>`;
+    }
+  }
+  if (u === undefined) return `<div class="cell none" title="לא במגוון">—</div>`;
+  if (u === 0) return `<div class="cell weak" title="רשום במגוון, 0 יחידות">0<small>רשום, ללא מכירות</small></div>`;
+  const med = E.peerMed.get(s.cluster.id + '|' + k.id) || u;
+  const ratio = u / med;
+  const cls = ratio >= .9 ? 'strong' : ratio < .5 ? 'weak' : 'active';
+  let extra = `<small>${Math.round(ratio * 100)}% מהדומים</small>`;
+  if (k.isHero) { const hp = E.heroPct.get(s.id + '|' + k.family); extra = `<small>אחוזון ${hp}</small>`; }
+  return `<div class="cell ${cls}" title="${int(u)} יח׳ · חציון הדומים ${int(med)}"><span class="num">${int(u)}</span>${extra}</div>`;
+}
+
+function renderMatrix(list) {
+  const fams = M.families.filter(f => F.cat === 'all' || f.category === F.cat);
+  const revBy = new Map(); list.forEach(o => revBy.set(o.store.id, (revBy.get(o.store.id) || 0) + o.rev));
+  let rows = M.stores.filter(storeMatch);
+  if (F.only) rows = rows.filter(s => revBy.has(s.id));
+  rows.sort((a, b) => (revBy.get(b.id) || 0) - (revBy.get(a.id) || 0) || b.total - a.total);
+  if (!rows.length || !fams.length) { $('#mx').innerHTML = `<div class="empty">אין סניפים שעונים על הסינון. נסו להוריד את הפוטנציאל המינימלי או את סף האחוזון.</div>`; return; }
+  const fh = fams.map(f => `<th class="fam-cell" colspan="${f.skus.length}">${esc(f.name)}</th>`).join('');
+  const sh = fams.map(f => f.skus.map((k, i) => `<th${i === 0 ? ' class="fam-cell"' : ''}><span class="sku-h">${k.isHero ? '<span class="hero">★ HERO</span>' : ''}${esc(k.name)}</span></th>`).join('')).join('');
+  const body = rows.map(s => {
+    const r = revBy.get(s.id) || 0;
+    return `<tr><th class="rowh" scope="row"><span class="st" title="${esc(s.name)}">${esc(s.name)}</span><span class="meta"><span class="score num" title="ציון פוטנציאל סניף">${s.potential}</span>${s.cluster.id} · <span class="num">${int(s.size)}</span> מ״ר${r ? ' · <b style="color:var(--ws-ink)" class="num">+' + ilsK(r) + '</b>' : ''}</span></th>`
+      + fams.map(f => f.skus.map((k, i) => `<td${i === 0 ? ' class="fam-cell"' : ''}>${cellFor(s, k)}</td>`).join('')).join('') + '</tr>';
+  }).join('');
+  $('#mx').innerHTML = `<table class="mx"><thead><tr class="fam"><th class="rowh" rowspan="2" style="vertical-align:bottom">סניף <span style="font-weight:400;color:var(--muted)">(${rows.length})</span></th>${fh}</tr><tr class="sku">${sh}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function renderTop(list) {
+  const top = [...list].sort((a, b) => b.rev - a.rev).slice(0, 5);
+  $('#top-list').innerHTML = top.length ? top.map(o => `<button class="li" type="button" data-opp="${esc(o.key)}"><b>${esc(o.sku.name)}</b><span class="r num">+${ilsK(o.rev)}</span><span class="m">${esc(o.store.name)} · Hero באחוזון ${o.heroPct} · <span class="pill ${st(o)}">${STATUS[st(o)]}</span></span></button>`).join('')
+    : `<div class="empty">אין הזדמנויות בסינון</div>`;
+}
+
+function renderClusters() {
+  $('#cl-list').innerHTML = E.clusters.map(c => {
+    const os = E.opps.filter(o => o.store.cluster === c && (F.cat === 'all' || o.sku.category === F.cat) && (F.chain === 'all' || o.store.chain === F.chain));
+    return `<button class="li" type="button" data-cluster="${c.id}" aria-pressed="${F.cluster === c.id}"><b>${c.id} · ${esc(c.label)}</b><span class="r num">${ilsK(os.reduce((s, o) => s + o.rev, 0))}</span><span class="m">${c.size} סניפים · ${os.length} הזדמנויות</span></button>`;
+  }).join('');
+}
+
+function bars(el, entries, attr) {
+  const max = Math.max(1, ...entries.map(e => e[1]));
+  el.innerHTML = entries.length ? entries.map(([n, v, sub]) => `<div class="bar-row"${attr ? ` role="button" tabindex="0" data-${attr}="${esc(n)}" style="cursor:pointer"` : ''}><span class="bar-name" title="${esc(n)}">${esc(n)}</span><div class="bar-track"><div class="bar-fill" style="width:${100 * v / max}%"></div></div><span class="bar-val num">${ilsK(v)}</span></div>`).join('')
+    : `<div class="empty">אין נתונים בסינון</div>`;
+}
+function renderBars(list) {
+  const by = (fn) => { const m = new Map(); list.forEach(o => m.set(fn(o), (m.get(fn(o)) || 0) + o.rev)); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+  bars($('#bars-chain'), by(o => o.store.chain), 'chain');
+  bars($('#bars-family'), by(o => o.family.name), null);
+}
+
+function renderTable(list) {
+  const sorters = { rev: (a, b) => b.rev - a.rev, score: (a, b) => b.score - a.score, hero: (a, b) => b.heroPct - a.heroPct, dist: (a, b) => b.dist - a.dist };
+  const rows = [...list].sort(sorters[sortBy]);
+  $('#op-sub').textContent = `${int(rows.length)} הזדמנויות בתוך הסינון · מיון לפי ${{ rev: 'שווי חודשי', score: 'ציון', hero: 'אחוזון Hero', dist: 'פיזור' }[sortBy]}`;
+  const th = (k, l) => `<th><button type="button" data-sort="${k}"${sortBy === k ? ' aria-sort="descending"' : ''}>${l}</button></th>`;
+  $('#opp-table').innerHTML = `<thead><tr>${th('score', 'ציון')}<th>סניף</th><th>רשת</th><th>מוצר חסר</th><th>Hero המשפחה</th>${th('hero', 'אחוזון Hero')}${th('dist', 'פיזור בדומים')}<th>צפי יח׳/חודש</th>${th('rev', 'צפי ₪/חודש')}<th>סטטוס</th></tr></thead><tbody>`
+    + (rows.length ? rows.slice(0, shown).map(o => `<tr data-opp="${esc(o.key)}" tabindex="0"><td><span class="score num">${o.score}</span></td><td><b>${esc(o.store.name)}</b><div style="font-size:11.5px;color:var(--muted)">${o.store.cluster.id} · ${esc(o.store.region)}</div></td><td>${esc(o.store.chain)}</td><td>${esc(o.sku.name)}${o.listedZero ? ' <span class="pill rejected">רשום · 0</span>' : ''}</td><td style="color:var(--muted)">${esc(o.family.hero.name)}</td><td><span class="num">P${o.heroPct}</span></td><td><span class="num">${pct(o.dist)}</span><span class="mini"><i style="width:${o.dist * 100}%"></i></span></td><td class="num">${int(o.units)}</td><td><b class="num" style="color:var(--ws-ink)">${ils(o.rev)}</b></td><td><span class="pill ${st(o)}">${STATUS[st(o)]}</span></td></tr>`).join('')
+      : `<tr><td colspan="10" class="empty">אין הזדמנויות שעונות על הסינון</td></tr>`) + '</tbody>';
+  $('#btn-more').hidden = rows.length <= shown;
+}
+
+/* ================= Quick Action Card ================= */
+let qaKey = null, lastFocus = null;
+function openQA(key) {
+  const o = E.byKey.get(key); if (!o) return;
+  qaKey = key; lastFocus = document.activeElement;
+  const s = o.store, c = s.cluster, stt = st(o);
+  const peers = [...o.carriers].sort((a, b) => M.u(b, o.sku) - M.u(a, o.sku)).slice(0, 6);
+  const maxU = Math.max(o.units, ...peers.map(p => M.u(p, o.sku)));
+  const basisTxt = o.basis === 'chain' ? `בסניפי ${esc(s.chain)} באותה קבוצה` : `בכל סניפי הקבוצה (פחות מ־3 סניפים דומים ב${esc(s.chain)} מחזיקים את המוצר)`;
+  $('#qa').innerHTML = `
+    <div class="qa-head">
+      <div><div class="eyebrow">White Space · ציון ${o.score} · ${c.id} ${esc(c.label)}</div><h3 id="qa-title">${esc(o.sku.name)}</h3><p>${esc(s.name)} · ${esc(s.region)} · <span class="num">${int(s.size)}</span> מ״ר</p></div>
+      <button class="x" type="button" data-close aria-label="סגירה">×</button>
+    </div>
+    <div class="qa-tiles">
+      <div class="qa-tile"><div class="v num">${ils(o.rev)}</div><div class="l">צפי תוספת מכירות לחודש</div></div>
+      <div class="qa-tile"><div class="v num">${int(o.units)}</div><div class="l">יחידות לחודש</div></div>
+      <div class="qa-tile"><div class="v num">${ilsK(o.rev * 12)}</div><div class="l">שווי שנתי</div></div>
+    </div>
+    <div><div class="eyebrow" style="margin-bottom:8px">למה להכניס את המוצר לסניף הזה</div>
+    <ul class="why">
+      <li data-n="1"><span><b>${esc(o.family.hero.name)}</b> נמכר כאן ב־<span class="num">${int(o.heroUnits)}</span> יח׳ בחודש, אחוזון <b>${o.heroPct}</b> מתוך ${c.size} סניפים דומים. הלקוחות כבר קונים את המשפחה.</span></li>
+      <li data-n="2"><span><b class="num">${pct(o.dist)}</b> מהסניפים הדומים ${basisTxt} כבר מוכרים את המוצר (<span class="num">${o.carriers.length}</span> מתוך <span class="num">${o.poolSize}</span>).</span></li>
+      <li data-n="3"><span>הם מוכרים בממוצע <span class="num">${int(o.avg)}</span> יח׳ בחודש. מותאם להיקף המכירות של הסניף (×<span class="num">${o.vf.toFixed(2)}</span>) ובמחיר <span class="num">${ils(o.sku.price)}</span> ליחידה.</span></li>
+      <li data-n="4"><span>${o.listedZero ? 'המוצר <b>רשום במגוון אך לא נמכר</b>: כדאי לבדוק מדף, מלאי והזמנות.' : 'המוצר <b>אינו קיים במגוון</b> של הסניף: נדרשת הכנסה למגוון והקצאת מדף ליד ה־Hero.'}</span></li>
+    </ul></div>
+    <div><div class="eyebrow" style="margin-bottom:8px">מכירות בסניפים הדומים (יח׳/חודש)</div>
+      <div class="peer-bars">
+        <div class="bar-row"><span class="bar-name"><b>צפי לסניף</b></span><div class="bar-track"><div class="bar-fill exp" style="width:${100 * o.units / maxU}%"></div></div><span class="bar-val num">${int(o.units)}</span></div>
+        ${peers.map(p => `<div class="bar-row"><span class="bar-name" title="${esc(p.name)}">${esc(p.name)}</span><div class="bar-track"><div class="bar-fill alt" style="width:${100 * M.u(p, o.sku) / maxU}%"></div></div><span class="bar-val num">${int(M.u(p, o.sku))}</span></div>`).join('')}
+      </div>
+    </div>
+    <div><div class="eyebrow" style="margin-bottom:8px">סטטוס טיפול</div><div class="seg" id="qa-status">${Object.entries(STATUS).map(([v, l]) => `<button type="button" data-st="${v}" aria-pressed="${stt === v}">${l}</button>`).join('')}</div></div>
+    <div class="qa-actions">
+      <button class="btn" type="button" id="qa-copy">העתקת תקציר לסוכן</button>
+      <button class="btn btn-primary" type="button" id="qa-target">${stt === 'target' ? '✓ מסומן כיעד · ביטול' : 'סמן כיעד לסוכן'}</button>
+    </div>`;
+  $('#qa-overlay').hidden = false;
+  $('#qa-target').focus();
+}
+function closeQA() { $('#qa-overlay').hidden = true; qaKey = null; if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
+function setStatus(key, v) {
+  if (v === 'new') delete statuses[key]; else statuses[key] = v;
+  store.set('wsp.status', statuses);
+  render();
+  if (qaKey === key) openQA(key);
+}
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
+async function copyText(txt, okMsg) {
+  try { await navigator.clipboard.writeText(txt); toast(okMsg); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (_) { }
+    ta.remove(); toast(ok ? okMsg : 'ההעתקה נחסמה בדפדפן');
+  }
+}
+
+/* ================= CSV import ================= */
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  const head = rows.shift().map(h => h.trim().toLowerCase());
+  const need = ['chain', 'store', 'region', 'size_sqm', 'category', 'family', 'sku', 'price', 'units'];
+  const miss = need.filter(n => !head.includes(n));
+  if (miss.length) throw new Error('חסרות עמודות: ' + miss.join(', '));
+  const out = rows.filter(r => r.some(x => x.trim())).map(r => {
+    const o = {}; head.forEach((h, i) => o[h] = (r[i] ?? '').trim());
+    o.is_hero = /^(1|true|yes|כן|y)$/i.test(o.is_hero || '') ? 1 : 0;
+    o.units = parseFloat(o.units) || 0; o.price = parseFloat(o.price) || 0; o.size_sqm = parseFloat(o.size_sqm) || 0;
+    return o;
+  });
+  if (out.length < 10) throw new Error('הקובץ קצר מדי לניתוח (פחות מ־10 שורות).');
+  return out;
+}
+
+/* ================= Events ================= */
+document.addEventListener('click', e => {
+  const t = e.target;
+  const oppEl = t.closest('[data-opp]'); if (oppEl) { openQA(oppEl.dataset.opp); return; }
+  if (t.closest('[data-close]') || t === $('#qa-overlay')) { closeQA(); return; }
+  const sb = t.closest('#f-status button'); if (sb) { F.status = sb.dataset.v; shown = 25; buildFilterOptions(); render(); return; }
+  const cl = t.closest('[data-cluster]'); if (cl) { F.cluster = F.cluster === cl.dataset.cluster ? 'all' : cl.dataset.cluster; buildFilterOptions(); render(); return; }
+  const ch = t.closest('[data-chain]'); if (ch) { F.chain = F.chain === ch.dataset.chain ? 'all' : ch.dataset.chain; buildFilterOptions(); render(); return; }
+  const so = t.closest('[data-sort]'); if (so) { sortBy = so.dataset.sort; render(); return; }
+  const qs = t.closest('#qa-status button'); if (qs) { setStatus(qaKey, qs.dataset.st); toast('הסטטוס עודכן: ' + STATUS[qs.dataset.st]); return; }
+  if (t.closest('#qa-target')) {
+    const was = st(E.byKey.get(qaKey)) === 'target';
+    setStatus(qaKey, was ? 'new' : 'target'); toast(was ? 'הוסר מיעדי הסוכן' : 'נוסף ליעדי הסוכן'); return;
+  }
+  if (t.closest('#qa-copy')) {
+    const o = E.byKey.get(qaKey);
+    copyText(`יעד הכנסת מוצר: ${o.sku.name}\nסניף: ${o.store.name} (${o.store.chain})\nצפי: ${int(o.units)} יח׳ / ${ils(o.rev)} בחודש\nנימוק: ${o.family.hero.name} באחוזון ${o.heroPct} בקבוצת הדומים; ${pct(o.dist)} מהסניפים הדומים מוכרים את המוצר.`, 'התקציר הועתק');
+    return;
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('#qa-overlay').hidden) closeQA();
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('tr[data-opp], .bar-row[data-chain]')) { e.preventDefault(); e.target.click(); }
+});
+const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
+on('#f-chain', 'change', e => { F.chain = e.target.value; shown = 25; render(); renderClusters(); });
+on('#f-cat', 'change', e => { F.cat = e.target.value; shown = 25; render(); });
+on('#f-cluster', 'change', e => { F.cluster = e.target.value; render(); });
+on('#f-min', 'input', e => { F.min = +e.target.value; $('#o-min').textContent = ils(F.min); render(); });
+on('#f-thr', 'input', e => { $('#o-thr').textContent = 'P' + e.target.value; });
+on('#f-thr', 'change', e => { F.thr = +e.target.value; compute(); });
+on('#f-q', 'input', e => { F.q = e.target.value.trim(); render(); });
+on('#f-only', 'change', e => { F.only = e.target.checked; render(); });
+on('#btn-more', 'click', () => { shown += 50; render(); });
+on('#btn-reset', 'click', () => { F = { ...F0, cat: F.cat }; buildFilterOptions(); compute(); });
+on('#btn-demo', 'click', () => { $('#csv-err').hidden = true; load(demoData(), true); toast('נטענו נתוני הדגמה'); });
+on('#btn-csv', 'click', () => $('#csv-file').click());
+on('#csv-file', 'change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try { const rows = parseCSV(fr.result); $('#csv-err').hidden = true; F = { ...F0, cat: 'all' }; load(rows, false); toast(`נטענו ${int(rows.length)} שורות`); }
+    catch (err) { $('#csv-err').textContent = 'לא ניתן לטעון את הקובץ. ' + err.message + ' הפורמט הנדרש מופיע בתחתית העמוד.'; $('#csv-err').hidden = false; }
+  };
+  fr.readAsText(file, 'utf-8'); e.target.value = '';
+});
+on('#btn-copy', 'click', () => {
+  const t = E.opps.filter(o => st(o) === 'target');
+  if (!t.length) { toast('עוד לא סומנו יעדים לסוכן'); return; }
+  const lines = ['chain,store,sku,expected_units,expected_ils,hero_pct,peer_distribution', ...t.map(o => [o.store.chain, o.store.name, o.sku.name, Math.round(o.units), Math.round(o.rev), o.heroPct, o.dist.toFixed(2)].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))];
+  copyText(lines.join('\n'), `${t.length} יעדים הועתקו כ־CSV`);
+});
+
+load(demoData(), true);
+</script>
+<!--ARTIFACT-BODY-END-->
+</body>
+</html>
