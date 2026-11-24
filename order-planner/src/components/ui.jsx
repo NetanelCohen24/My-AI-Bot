@@ -217,7 +217,7 @@ export function useTheme() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F4F6FA' : '#0B0F19');
-    try { localStorage.setItem('cp.theme', theme); } catch { /* private mode */ }
+    try { localStorage.setItem('op.theme', theme); } catch { /* private mode */ }
   }, [theme]);
   return [theme, () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))];
 }
