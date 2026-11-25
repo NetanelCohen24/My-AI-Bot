@@ -1,5 +1,5 @@
 /* =====================================================================
-   TradeQuery AI — Visualization layer (Chart.js 4 + HTML KPI/table)
+   AccountBrief AI — Visualization layer (Chart.js 4 + HTML KPI/table)
    ===================================================================== */
 (function (global) {
   'use strict';
@@ -273,5 +273,37 @@
     container.appendChild(el);
   }
 
-  global.TQCharts = { render, available, prettyKey, PALETTE };
+  // 12-month purchase trend for one account, this year vs. the same months a year earlier
+  function renderBriefTrend(container, rows, opts) {
+    opts = opts || {};
+    container.innerHTML = '';
+    if (container._chart) { container._chart.destroy(); container._chart = null; }
+    const cur = rows.slice(-12), prev = rows.slice(-24, -12);
+    const wrap = document.createElement('div');
+    wrap.className = 'chart-wrap brief-chart';
+    const cv = document.createElement('canvas');
+    wrap.appendChild(cv); container.appendChild(wrap);
+    const fmt = (v) => '\u2066' + E.FMT.money(v) + '\u2069';
+    container._chart = new Chart(cv, {
+      type: 'line',
+      data: {
+        labels: cur.map((r) => prettyKey(r.sale_month)),
+        datasets: [
+          { label: '12 החודשים האחרונים', data: cur.map((r) => r.revenue), borderColor: INDIGO, backgroundColor: alpha(INDIGO, 0.08), fill: true, tension: 0.35, borderWidth: 2.4, pointRadius: 3, pointBackgroundColor: INDIGO },
+          { label: 'אשתקד', data: prev.length === 12 ? prev.map((r) => r.revenue) : [], borderColor: '#A8A29E', borderDash: [5, 4], fill: false, tension: 0.35, borderWidth: 1.6, pointRadius: 0 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: opts.static ? false : undefined,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'top', align: 'start' }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${fmt(c.raw)}` } } },
+        scales: {
+          x: { grid: { display: false }, border: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 10 } },
+          y: { position: 'right', grid: { color: '#F2EFEA' }, border: { display: false }, ticks: { callback: (v) => fmt(v), maxTicksLimit: 5 } }
+        }
+      }
+    });
+  }
+
+  global.TQCharts = { render, renderBriefTrend, available, prettyKey, PALETTE };
 })(window);

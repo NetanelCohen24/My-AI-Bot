@@ -1,9 +1,10 @@
 /* =====================================================================
-   TradeQuery AI — Built-in FMCG dataset (deterministic synthetic data)
+   AccountBrief AI — Built-in FMCG dataset (deterministic synthetic data)
    ---------------------------------------------------------------------
-   24 months (Oct-2024 → Sep-2026) × 20 branches × 40 products
-   Tables: sales (monthly sell-out), inventory (end-of-period snapshot)
-   All chains, brands and branches are fictional.
+   25 months (Oct-2024 → Oct-2026) × 20 customer accounts × 40 products
+   Tables: customers (account master), sales (monthly sell-in per account),
+           inventory (shelf/stock snapshot per account)
+   Every chain, brand, branch, customer and account manager is fictional.
    ===================================================================== */
 (function (global) {
   'use strict';
@@ -106,11 +107,13 @@
 
   // ---------- months ----------
   const MONTHS = [];
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 25; i++) {
     const d = new Date(Date.UTC(2024, 9 + i, 1));
     const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1;
     MONTHS.push({ i, y, m, ym: `${y}-${String(m).padStart(2, '0')}`, q: `${y}-Q${Math.ceil(m / 3)}` });
   }
+  const SNAPSHOT_DATE = '2026-11-24';
+  const ABANDON_FROM = '2026-09'; // "not ordered in the last 60 days" ⇔ no units in Sep–Oct 2026
 
   function season(type, m) {
     const c = (peak) => Math.cos(((m - peak) / 12) * 2 * Math.PI);
@@ -126,17 +129,66 @@
   // Story-telling events baked into the data (so insights are interesting)
   function eventFactor(chain, p, mo) {
     let f = 1;
-    // Super Gal health-food promotion in Q3-2026
     if (chain.name === 'סופר גל' && p.cat === 'מזון בריאות' && mo.q === '2026-Q3') f *= 1.42;
-    // Oren Market freezer-line outage, Aug-2026
     if (chain.name === 'אורן מרקט' && p.cat === 'קפואים' && (mo.ym === '2026-08' || mo.ym === '2026-09')) f *= 0.72;
-    // Fresh Point is the health destination: health grows extra fast there
     if (chain.name === 'פרש פוינט' && p.health) f *= Math.pow(1.011, mo.i);
-    // Hisachon Plus cleaning private-label push from 2026
     if (chain.name === 'חסכון פלוס' && p.cat === 'ניקיון' && mo.y === 2026) f *= 1.15;
-    // Shuk Ironi energy-drink listing in 2026-Q2
     if (chain.name === 'שוק עירוני' && p.name.startsWith('משקה אנרגיה') && mo.i >= 18) f *= 1.35;
     return f;
+  }
+
+  // ---------- customer accounts (one per branch) ----------
+  const MANAGERS = { 'סופר גל': 'דנה לוי', 'אורן מרקט': 'אורי כהן', 'שוק עירוני': 'מיכל אברהם', 'פרש פוינט': 'יואב שגיא', 'חסכון פלוס': 'דנה לוי' };
+  const ID_ORDER = { 'דיזנגוף': 1004, 'מלחה': 1001, 'חורב': 1002, 'עזריאלי מודיעין': 1003 };
+  // Hand-written account stories for the demo meetings; the rest are generated
+  const STORIES = {
+    1004: {
+      whitespace: ['חמאת בוטנים טבעית', 'תה קר ללא סוכר', 'גרנולה ללא תוספת סוכר'],
+      abandoned: ['קורנפלקס 750 גרם', 'מרכך כביסה 2 ליטר'],
+      decline: { 'קולה 1.5 ליטר': 0.55 }, creditLimit: 900000, util: 0.62, lastOrder: '2026-11-20'
+    },
+    1012: {
+      whitespace: ['יוגורט חלבון 200 גרם', 'קינואה 500 גרם', 'חטיף שיבולת שועל'],
+      abandoned: ['שמפו 750 מ״ל', 'גלידה וניל 1 ליטר'],
+      decline: {}, slump: 0.78, creditLimit: 450000, util: 0.94, lastOrder: '2026-09-29'
+    },
+    1009: { whitespace: ['משקה סויה ללא סוכר', 'שקדים טבעיים 300 גרם', 'קרם הגנה SPF50'], abandoned: ['אקונומיקה 2 ליטר'], decline: { 'חטיף צ׳יפס 70 גרם': 0.6 }, creditLimit: 400000, util: 0.48, lastOrder: '2026-11-18' },
+    1017: { whitespace: ['סבון גוף טבעי', 'פריכיות אורז מלא', 'ירקות קפואים מעורבים'], abandoned: ['מיץ תפוזים סחוט 1 ליטר'], decline: {}, creditLimit: 1200000, util: 0.71, lastOrder: '2026-11-23' },
+    1013: { whitespace: ['קינואה 500 גרם', 'משקה אנרגיה 250 מ״ל', 'בורקס גבינה קפוא'], abandoned: ['לחם אחיד'], decline: {}, creditLimit: 500000, util: 0.39, lastOrder: '2026-11-21' }
+  };
+
+  function accounts(r) {
+    const list = [];
+    let next = 1005;
+    CHAINS.forEach((ch) => ch.branches.forEach(([bname, city, bsize]) => {
+      const id = ch.name === 'סופר גל' ? ID_ORDER[bname] : next++;
+      list.push({ id, chain: ch, bname, city, bsize });
+    }));
+    return list.map((a) => {
+      const st = STORIES[a.id] || {};
+      const pick = (n, exclude) => {
+        const out = [];
+        while (out.length < n) {
+          const p = PRODUCTS[Math.floor(r() * PRODUCTS.length)].name;
+          if (!out.includes(p) && !(exclude || []).includes(p)) out.push(p);
+        }
+        return out;
+      };
+      const whitespace = st.whitespace || pick(3);
+      const abandoned = st.abandoned || pick(1 + Math.floor(r() * 2), whitespace);
+      const sizeK = a.chain.sizeF * a.bsize;
+      const creditLimit = st.creditLimit || Math.round((250000 + sizeK * 450000 * (0.8 + r() * 0.4)) / 50000) * 50000;
+      const util = st.util || 0.32 + r() * 0.5;
+      const lastOrder = st.lastOrder || `2026-11-${String(3 + Math.floor(r() * 21)).padStart(2, '0')}`;
+      return {
+        ...a, whitespace, abandoned, decline: st.decline || {}, slump: st.slump || 1,
+        customer: {
+          customer_id: a.id, customer_name: `${a.chain.name} ${a.bname}`, chain: a.chain.name, branch: a.bname, city: a.city,
+          account_manager: MANAGERS[a.chain.name], credit_limit: creditLimit, open_balance: Math.round(creditLimit * util),
+          payment_terms: a.chain.name === 'חסכון פלוס' ? 'שוטף+90' : 'שוטף+60', last_order_date: lastOrder
+        }
+      };
+    }).sort((x, y) => x.id - y.id);
   }
 
   // Supplier cost → retailer gross margin ≈ 26-30% (regular) / 36-40% (health)
@@ -147,82 +199,98 @@
 
   function build() {
     const r = rng(20261124);
+    const accts = accounts(rng(1004));
     const sales = [];
-    const last3 = {}; // branch|product -> units in last 3 months
-    CHAINS.forEach((ch) => {
-      ch.branches.forEach(([bname, city, bsize]) => {
-        PRODUCTS.forEach((p) => {
-          const pf = 0.92 + r() * 0.16; // branch-product affinity
-          MONTHS.forEach((mo) => {
-            const trend = Math.pow(1 + p.g + ch.trend, mo.i);
-            const elastic = Math.pow(ch.priceF, -1.3);
-            const noise = 0.9 + r() * 0.2;
-            const units = Math.max(0, Math.round(
-              p.bu * ch.sizeF * bsize * pf * season(p.season, mo.m) * trend * elastic * eventFactor(ch, p, mo) * noise));
-            const price = p.price * ch.priceF * Math.pow(1.0015, mo.i);
-            const unitCost = baseCost(p) * Math.pow(1.0025, mo.i);
-            const revenue = Math.round(units * price * 100) / 100;
-            const cogs = Math.round(units * unitCost * 100) / 100;
-            sales.push({
-              sale_month: mo.ym, sale_quarter: mo.q, sale_year: mo.y,
-              chain: ch.name, branch: bname, city,
-              category: p.cat, product: p.name, brand: p.brand,
-              segment: p.health ? 'בריאות' : 'רגיל',
-              units, revenue, cogs,
-              gross_profit: Math.round((revenue - cogs) * 100) / 100
-            });
-            if (mo.i >= 21) {
-              const k = bname + '|' + p.name;
-              last3[k] = (last3[k] || 0) + units;
-            }
+    const last3 = {};
+    accts.forEach((a) => {
+      const ch = a.chain, c = a.customer;
+      const acctCols = { customer_id: c.customer_id, customer_name: c.customer_name, account_manager: c.account_manager, credit_limit: c.credit_limit, last_order_date: c.last_order_date };
+      PRODUCTS.forEach((p) => {
+        const pf = 0.92 + r() * 0.16;
+        if (a.whitespace.includes(p.name)) return; // never listed at this account → white space
+        MONTHS.forEach((mo) => {
+          const trend = Math.pow(1 + p.g + ch.trend, mo.i);
+          const elastic = Math.pow(ch.priceF, -1.3);
+          const noise = 0.9 + r() * 0.2;
+          let f = eventFactor(ch, p, mo);
+          if (a.decline[p.name] && mo.ym >= '2026-07') f *= a.decline[p.name];
+          if (a.slump < 1 && mo.ym >= '2026-07') f *= a.slump;
+          if (a.abandoned.includes(p.name) && mo.ym >= ABANDON_FROM) f = 0;
+          const units = Math.max(0, Math.round(p.bu * ch.sizeF * a.bsize * pf * season(p.season, mo.m) * trend * elastic * f * noise));
+          const price = p.price * ch.priceF * Math.pow(1.0015, mo.i);
+          const unitCost = baseCost(p) * Math.pow(1.0025, mo.i);
+          const revenue = Math.round(units * price * 100) / 100;
+          const cogs = Math.round(units * unitCost * 100) / 100;
+          sales.push({
+            sale_month: mo.ym, sale_quarter: mo.q, sale_year: mo.y,
+            chain: ch.name, branch: a.bname, city: a.city, ...acctCols,
+            category: p.cat, product: p.name, brand: p.brand,
+            segment: p.health ? 'בריאות' : 'רגיל',
+            units, revenue, cogs,
+            gross_profit: Math.round((revenue - cogs) * 100) / 100
           });
+          if (mo.i >= 22) { const k = a.id + '|' + p.name; last3[k] = (last3[k] || 0) + units; }
         });
       });
     });
 
     const inventory = [];
-    CHAINS.forEach((ch) => {
-      ch.branches.forEach(([bname, city]) => {
-        PRODUCTS.forEach((p) => {
-          const avgDaily = (last3[bname + '|' + p.name] || 0) / 92;
-          const x = r();
-          let days;
-          if (x < 0.11) days = 1 + r() * 5.5;          // shortage risk
-          else if (x < 0.19) days = 62 + r() * 60;     // overstock
-          else days = 10 + r() * 34;                   // healthy
-          if (p.health && ch.name === 'סופר גל' && p.cat === 'מזון בריאות') days = Math.min(days, 3 + r() * 4); // promo drained shelves
-          const stock = Math.round(avgDaily * days);
-          const cover = avgDaily > 0 ? Math.round((stock / avgDaily) * 10) / 10 : 0;
-          const unitCost = baseCost(p) * Math.pow(1.0025, 23);
-          inventory.push({
-            snapshot_date: '2026-09-30',
-            chain: ch.name, branch: bname, city,
-            category: p.cat, product: p.name, brand: p.brand,
-            segment: p.health ? 'בריאות' : 'רגיל',
-            stock_units: stock,
-            avg_daily_units: Math.round(avgDaily * 10) / 10,
-            days_of_cover: cover,
-            stock_value: Math.round(stock * unitCost),
-            stock_status: cover < 7 ? 'חוסר צפוי' : cover > 60 ? 'עודף' : 'תקין'
-          });
+    accts.forEach((a) => {
+      const ch = a.chain, c = a.customer;
+      PRODUCTS.forEach((p) => {
+        if (a.whitespace.includes(p.name)) return;
+        let avgDaily = (last3[a.id + '|' + p.name] || 0) / 92;
+        const x = r();
+        let days;
+        if (x < 0.11) days = 1 + r() * 5.5;
+        else if (x < 0.19) days = 62 + r() * 60;
+        else days = 10 + r() * 34;
+        if (ch.name === 'סופר גל' && p.cat === 'מזון בריאות') days = Math.min(days, 3 + r() * 4); // promo drained shelves
+        let stock = Math.round(avgDaily * days);
+        if (a.abandoned.includes(p.name)) { stock = Math.round(40 + r() * 80); avgDaily = Math.max(avgDaily, 0.4); }
+        const cover = avgDaily > 0 ? Math.round((stock / avgDaily) * 10) / 10 : 0;
+        const unitCost = baseCost(p) * Math.pow(1.0025, 24);
+        inventory.push({
+          snapshot_date: SNAPSHOT_DATE,
+          customer_id: c.customer_id, customer_name: c.customer_name, account_manager: c.account_manager,
+          credit_limit: c.credit_limit, last_order_date: c.last_order_date,
+          chain: ch.name, branch: a.bname, city: a.city,
+          category: p.cat, product: p.name, brand: p.brand,
+          segment: p.health ? 'בריאות' : 'רגיל',
+          stock_units: stock,
+          avg_daily_units: Math.round(avgDaily * 10) / 10,
+          days_of_cover: cover,
+          stock_value: Math.round(stock * unitCost),
+          stock_status: cover < 7 ? 'חוסר צפוי' : cover > 60 ? 'עודף' : 'תקין'
         });
       });
     });
-    return { sales, inventory };
+    return { sales, inventory, customers: accts.map((a) => a.customer) };
   }
 
+  const ACCT_COLS = [
+    ['customer_id', 'INT', 'קוד לקוח (1001–1020)'], ['customer_name', 'STRING', 'שם הלקוח (רשת + סניף)'],
+    ['account_manager', 'STRING', 'מנהל תיק'], ['credit_limit', 'NUMBER', 'מסגרת אשראי ₪'], ['last_order_date', 'STRING', 'תאריך הזמנה אחרון']
+  ];
   global.TQData = {
-    build, CHAINS, PRODUCTS, CATEGORY_EN, CITY_EN, MONTHS,
+    build, CHAINS, PRODUCTS, CATEGORY_EN, CITY_EN, MONTHS, SNAPSHOT_DATE, ABANDON_FROM,
     schema: {
+      customers: [
+        ['customer_id', 'INT', 'קוד לקוח'], ['customer_name', 'STRING', 'שם הלקוח'], ['chain', 'STRING', 'רשת'], ['branch', 'STRING', 'סניף'],
+        ['city', 'STRING', 'עיר'], ['account_manager', 'STRING', 'מנהל תיק'], ['credit_limit', 'NUMBER', 'מסגרת אשראי ₪'],
+        ['open_balance', 'NUMBER', 'יתרה פתוחה ₪'], ['payment_terms', 'STRING', 'תנאי תשלום'], ['last_order_date', 'STRING', 'תאריך הזמנה אחרון']
+      ],
       sales: [
         ['sale_month', 'STRING', 'חודש (YYYY-MM)'], ['sale_quarter', 'STRING', 'רבעון (YYYY-Q#)'], ['sale_year', 'INT', 'שנה'],
+        ...ACCT_COLS,
         ['chain', 'STRING', 'רשת שיווק'], ['branch', 'STRING', 'סניף'], ['city', 'STRING', 'עיר'],
         ['category', 'STRING', 'קטגוריה'], ['product', 'STRING', 'מוצר'], ['brand', 'STRING', 'מותג'],
-        ['segment', 'STRING', 'בריאות / רגיל'], ['units', 'INT', 'יחידות שנמכרו'], ['revenue', 'NUMBER', 'הכנסות ₪'],
+        ['segment', 'STRING', 'בריאות / רגיל'], ['units', 'INT', 'יחידות'], ['revenue', 'NUMBER', 'הכנסות ₪'],
         ['cogs', 'NUMBER', 'עלות מכר ₪'], ['gross_profit', 'NUMBER', 'רווח גולמי ₪']
       ],
       inventory: [
-        ['snapshot_date', 'STRING', 'תאריך תמונת מלאי'], ['chain', 'STRING', 'רשת'], ['branch', 'STRING', 'סניף'], ['city', 'STRING', 'עיר'],
+        ['snapshot_date', 'STRING', 'תאריך תמונת מלאי'], ...ACCT_COLS,
+        ['chain', 'STRING', 'רשת'], ['branch', 'STRING', 'סניף'], ['city', 'STRING', 'עיר'],
         ['category', 'STRING', 'קטגוריה'], ['product', 'STRING', 'מוצר'], ['brand', 'STRING', 'מותג'], ['segment', 'STRING', 'בריאות / רגיל'],
         ['stock_units', 'INT', 'יחידות במלאי'], ['avg_daily_units', 'NUMBER', 'מכירה יומית ממוצעת'],
         ['days_of_cover', 'NUMBER', 'ימי מלאי'], ['stock_value', 'NUMBER', 'שווי מלאי ₪'], ['stock_status', 'STRING', 'חוסר צפוי / תקין / עודף']

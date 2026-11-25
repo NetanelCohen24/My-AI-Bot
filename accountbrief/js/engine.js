@@ -1,5 +1,5 @@
 /* =====================================================================
-   TradeQuery AI — Local NLQ engine (Hebrew + English → SQL → insight)
+   AccountBrief AI — Local NLQ engine (Hebrew + English → SQL → insight)
    ---------------------------------------------------------------------
    A deterministic semantic parser. No data leaves the browser:
      question → parse (measure / dims / filters / time / intent)
@@ -60,6 +60,7 @@
       if (kind === 'money') return '₪' + v.toLocaleString('en-US', { maximumFractionDigits: 0 });
       if (kind === 'money2') return '₪' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       if (kind === 'pct') return v.toFixed(1) + '%';
+      if (kind === 'id') return String(v);
       if (kind === 'pts') return FMT.pts(v);
       return v.toLocaleString('en-US', { maximumFractionDigits: 1 });
     }
@@ -75,7 +76,11 @@
     stock_units: ['יחידות במלאי', 'num'], avg_daily_units: ['מכירה יומית', 'num'], days_of_cover: ['ימי מלאי', 'num'],
     stock_value: ['שווי מלאי', 'money'], stock_status: ['סטטוס מלאי'], items: ['פריטים', 'num'],
     shortage_items: ['פריטים בחוסר', 'num'], excess_items: ['פריטים בעודף', 'num'], avg_days: ['ממוצע ימי מלאי', 'num'],
-    snapshot_date: ['תאריך']
+    snapshot_date: ['תאריך'], customer_id: ['קוד לקוח', 'id'], customer_name: ['לקוח'], account_manager: ['מנהל תיק'],
+    credit_limit: ['מסגרת אשראי', 'money'], open_balance: ['יתרה פתוחה', 'money'], last_order_date: ['הזמנה אחרונה'], payment_terms: ['תנאי תשלום'],
+    rev_l3m: ['הכנסות · 3 ח׳ אחרונים', 'money'], rev_ly3m: ['הכנסות · אותם חודשים אשתקד', 'money'], units_l60d: ['יחידות · 60 יום', 'num'],
+    customer_units: ['יחידות אצל הלקוח', 'num'], stores: ['סניפים', 'num'], avg_monthly_rev: ['ממוצע חודשי לסניף', 'money'],
+    ytd_revenue: ['מכירות YTD', 'money'], ytd_prev_revenue: ['YTD אשתקד', 'money'], ytd_margin_pct: ['% רווח YTD', 'pct']
   };
   function colLabel(c, labels) {
     if (labels && labels[c]) return labels[c];
@@ -130,6 +135,8 @@
     brand: { col: 'brand', sing: 'מותג', pl: 'מותגים', adj: 'מובילים', which: 'איזה', child: 'product', kwS: ['מותג', 'brand'], kwP: ['מותגים', 'brands'] },
     month: { col: 'sale_month', sing: 'חודש', pl: 'חודשים', adj: 'מובילים', which: 'איזה', child: null, kwS: [], kwP: [] },
     quarter: { col: 'sale_quarter', sing: 'רבעון', pl: 'רבעונים', adj: 'מובילים', which: 'איזה', child: null, kwS: [], kwP: [] },
+    customer: { col: 'customer_name', fcol: 'customer_id', sing: 'לקוח', pl: 'לקוחות', adj: 'מובילים', which: 'איזה', child: 'category', kwS: ['לקוח', 'customer', 'account'], kwP: ['לקוחות', 'customers', 'accounts'] },
+    manager: { col: 'account_manager', sing: 'מנהל תיק', pl: 'מנהלי תיק', adj: 'מובילים', which: 'איזה', child: 'customer', kwS: ['מנהל תיק', 'מנהל לקוח', 'account manager'], kwP: ['מנהלי תיק', 'מנהלי לקוחות', 'account managers'] },
     segment: { col: 'segment', sing: 'סגמנט', pl: 'סגמנטים', adj: 'מובילים', which: 'איזה', child: 'category', kwS: ['סגמנט', 'segment'], kwP: ['סגמנטים', 'segments'] }
   };
   const DIM_MARKERS = ['לפי', 'איזו', 'איזה', 'אילו', 'אלו', 'מבין', 'בין ה', 'כל ה', 'כל', 'בכל', 'לכל', 'מה ה', 'מהי ה', 'מהו ה', 'which', 'what', 'by', 'per', 'each', 'top', 'every', 'across', 'among', 'המובילות', 'המובילים'];
@@ -149,6 +156,7 @@
     yoy: ['אשתקד', 'שנה שעברה', 'השנה הקודמת', 'שנה קודמת', 'yoy', 'year over year', 'year-over-year', 'last year', 'שנתית', 'שנה מול שנה'],
     health: ['בריאות', 'בריאים', 'בריא', 'health', 'healthy', 'אורגני', 'organic'],
     regular: ['רגילים', 'רגיל', 'רגילות', 'regular', 'standard', 'conventional', 'השאר'],
+    promo: ['מבצע', 'מבצעים', 'הצעת', 'הצעה', 'promo', 'promotion', 'deal', 'קידום מכירות'],
     cont: ['ומה', 'ומ ה', 'ואם', 'and what', 'what about', 'how about', 'and for', 'ובנוגע', 'ולגבי', 'ומה לגבי', 'עכשיו ל', 'אותו דבר']
   };
   const WORD_NUM = { 'שלושת': 3, 'שלושה': 3, 'שלוש': 3, 'ארבעת': 4, 'חמשת': 5, 'חמישה': 5, 'חמש': 5, 'עשרת': 10, 'עשרה': 10, 'שבעת': 7, 'three': 3, 'five': 5, 'ten': 10 };
@@ -184,12 +192,19 @@
       distinct('branch').forEach((v) => add('branch', v));
       distinct('product').forEach((v) => add('product', v, prodAlias[v]));
       distinct('brand').forEach((v) => add('brand', v));
+      const customers = alasql.tables.customers ? alasql('SELECT * FROM customers ORDER BY customer_id') : [];
+      customers.forEach((c) => add('customer', c.customer_name));
+      [...new Set(customers.map((c) => c.account_manager))].forEach((v) => add('manager', v));
       values.sort((a, b2) => b2.term.length - a.term.length);
       ctx.meta = {
         months, quarters, years, values,
-        lastMonth: months[months.length - 1], lastQuarter: quarters[quarters.length - 1], lastYear: years[years.length - 1],
+        lastMonth: months[months.length - 1], lastYear: years[years.length - 1],
+        lastQuarter: [...quarters].reverse().find((q) => months.filter((m) => m.startsWith(q.slice(0, 4)) && Math.ceil(+m.slice(5) / 3) === +q.slice(-1)).length === 3) || quarters[quarters.length - 1],
+        customers, custById: Object.fromEntries(customers.map((c) => [c.customer_id, c])),
+        snapshot: alasql.tables.inventory && alasql.tables.inventory.data[0] ? alasql.tables.inventory.data[0].snapshot_date : null,
         rows: alasql('SELECT COUNT(*) AS n FROM sales')[0].n
       };
+      ctx.meta.qEndMonth = `${ctx.meta.lastQuarter.slice(0, 4)}-${String(+ctx.meta.lastQuarter.slice(-1) * 3).padStart(2, '0')}`;
       return ctx.meta;
     }
 
@@ -281,8 +296,13 @@
       const p = { q, filters: {}, dims: [], measure: null, intent: null, order: 'DESC', topN: null, time: null, flags: {} };
 
       // 1) entity values (longest first) → filters; blank them out
-      const TOK = { chain: 'α', category: 'β', city: 'γ', branch: 'δ', product: 'ε', brand: 'ζ', segment: 'η' };
+      const TOK = { chain: 'α', category: 'β', city: 'γ', branch: 'δ', product: 'ε', brand: 'ζ', segment: 'η', customer: 'κ', manager: 'μ' };
       const found = {};
+      t = t.replace(/(^|[^0-9])(?:[בלמה]?(?:קוד\s*)?לקוח|customer|account|#)?\s*(?:מס(?:פר|׳)?\s*)?[#:]?\s*(1\d{3})(?![0-9])/g, (all, pre, id) => {
+        if (!M.custById[+id]) return all;
+        (found.customer = found.customer || new Set()).add(M.custById[+id].customer_name);
+        return `${pre} §κ§`;
+      });
       M.values.forEach((v) => {
         const re = termRegex(v.term);
         if (re.test(t)) {
@@ -291,6 +311,7 @@
         }
       });
       Object.keys(found).forEach((d) => { p.filters[d] = [...found[d]]; });
+      if (p.filters.customer) p.filters.customer = p.filters.customer.map((n) => M.customers.find((c) => c.customer_name === n).customer_id);
 
       // 2) segment (health vs regular)
       const hasHealth = anyTerm(t, KW.health), hasRegular = anyTerm(t, KW.regular);
@@ -356,7 +377,9 @@
       // 7) intent
       const g = anyIncl(t, KW.growth), sh = anyIncl(t, KW.share);
       const tr = !timeDim && (anyIncl(t, KW.trend) || anyTerm(t, ['חודשי', 'חודשית', 'חודשיים']));
-      if (isInv && !g) {
+      if (anyIncl(t, KW.promo)) {
+        p.intent = 'promo';
+      } else if (isInv && !g) {
         p.intent = 'inventory';
         p.inv = anyIncl(t, KW.shortage) ? 'shortage' : anyIncl(t, KW.excess) ? 'excess' : 'overview';
         p.invMeasure = anyIncl(t, ['יחידות', 'units']) ? 'stock_units' : anyIncl(t, ['ימי', 'days']) ? 'avg_days' : 'stock_value';
@@ -371,7 +394,7 @@
       else if (Object.keys(p.filters).length || p.measure || p.time || anyIncl(t, ['כמה', 'סה״כ', 'סה"כ', 'סך', 'total', 'how much', 'how many', 'overall'])) p.intent = 'total';
       p.flags.table = anyIncl(t, KW.table);
       p.flags.cont = KW.cont.some((k) => t.trimStart().startsWith(k + ' ') || t.trimStart().startsWith(k));
-      p.flags.signals = !!(p.measure || p.dims.length || g || tr || sh || isInv || p.flags.segmentCompare);
+      p.flags.signals = !!(p.measure || p.dims.length || g || tr || sh || isInv || p.flags.segmentCompare || p.intent === 'promo');
       if (p.intent === 'share' && MEASURES[p.measure || 'revenue'].ratio) p.intent = 'rank';
       if (!p.measure) p.measure = 'revenue';
       return p;
@@ -403,6 +426,10 @@
     function whereParts(p, opts) {
       const parts = [];
       Object.entries(p.filters).forEach(([d, vals]) => {
+        if (DIMS[d] && DIMS[d].fcol) {
+          parts.push(vals.length === 1 ? `${DIMS[d].fcol} = ${+vals[0]}` : `${DIMS[d].fcol} IN (${vals.map(Number).join(', ')})`);
+          return;
+        }
         const col = DIMS[d] ? DIMS[d].col : d;
         if (opts && opts.skipDim === d && vals.length > 1) { parts.push(`${col} IN (${vals.map(sq).join(', ')})`); return; }
         parts.push(vals.length === 1 ? `${col} = ${sq(vals[0])}` : `${col} IN (${vals.map(sq).join(', ')})`);
@@ -415,6 +442,7 @@
       const parts = [];
       Object.entries(p.filters).forEach(([d, vals]) => {
         if (d === 'segment') { parts.push(vals[0] === 'בריאות' ? 'מוצרי בריאות' : 'מוצרים רגילים'); return; }
+        if (d === 'customer') { parts.push(vals.length > 1 ? `לקוחות: ${vals.map((v) => '#' + v).join(', ')}` : `לקוח #${vals[0]}`); return; }
         const dd = DIMS[d];
         parts.push(vals.length > 1 ? `${dd.pl}: ${vals.join(', ')}` : `${dd.sing} ${vals[0]}`);
       });
@@ -430,6 +458,7 @@
         .filter((k) => k !== skip).map((k) => `  ${mExpr(k)} AS ${k}`);
 
       if (p.intent === 'inventory') return buildInventory(p);
+      if (p.intent === 'promo') return buildPromo(p);
 
       if (p.intent === 'growth') {
         let cur = p.time, prev;
@@ -466,6 +495,7 @@
         const tcol = p.grain === 'quarter' ? 'sale_quarter' : 'sale_month';
         const series = p.dims[0] || null;
         const wp = whereParts(p);
+        if (tcol === 'sale_quarter') wp.push(`sale_month <= '${M.qEndMonth}'`);
         if (p.time) wp.push(p.time.kind === 'year' || p.time.kind === 'range' || p.time.kind === 'quarter' ? `(${p.time.cond})` : `(${p.time.cond})`);
         let note = '';
         if (series) {
@@ -507,6 +537,19 @@
       return R;
     }
 
+    function windows() {
+      const L = ctx.meta.lastMonth;
+      return { l60: ymAdd(L, -1), l3: ymAdd(L, -2), ly3a: ymAdd(L, -14), ly3b: ymAdd(L, -12), h6: ymAdd(L, -5), last: L };
+    }
+
+    function buildPromo(p) {
+      const w = windows();
+      const wp = whereParts(p);
+      const R = { sql: '', viz: { type: 'table' }, aux: {} };
+      R.sql = `-- מועמדים למבצע: מוצרים רווחיים שהמכירות שלהם נחלשו\n-- (3 החודשים האחרונים מול אותם חודשים אשתקד)\nSELECT * FROM (\n  SELECT\n    product,\n    category,\n    SUM(CASE WHEN sale_month >= '${w.l3}' THEN revenue ELSE 0 END) AS rev_l3m,\n    SUM(CASE WHEN sale_month >= '${w.ly3a}' AND sale_month <= '${w.ly3b}' THEN revenue ELSE 0 END) AS rev_ly3m,\n    ROUND((SUM(CASE WHEN sale_month >= '${w.l3}' THEN revenue ELSE 0 END) / NULLIF(SUM(CASE WHEN sale_month >= '${w.ly3a}' AND sale_month <= '${w.ly3b}' THEN revenue ELSE 0 END), 0) - 1) * 100, 1) AS growth_pct,\n    ROUND(SUM(gross_profit) * 100 / NULLIF(SUM(revenue), 0), 1) AS margin_pct\n  FROM sales${W([...wp, `sale_month >= '${w.ly3a}'`]).replace(/\n/g, '\n  ')}\n  GROUP BY product, category\n) AS t\nWHERE t.rev_l3m > 0 AND t.growth_pct < 0\nORDER BY t.margin_pct DESC\nLIMIT ${p.topN || 5}`;
+      return R;
+    }
+
     function buildInventory(p) {
       const R = { sql: '', viz: {}, aux: {} };
       const wp = whereParts(p);
@@ -515,7 +558,7 @@
       const dcol = dim ? DIMS[dim].col : null;
       if (dcol) {
         const sortBy = p.inv === 'shortage' ? 'shortage_items' : p.inv === 'excess' ? 'excess_items' : p.invMeasure;
-        R.sql = `-- תמונת מלאי נכון ל-30/09/2026\nSELECT\n  ${dcol},\n  COUNT(*) AS items,\n  SUM(CASE WHEN stock_status = 'חוסר צפוי' THEN 1 ELSE 0 END) AS shortage_items,\n  SUM(CASE WHEN stock_status = 'עודף' THEN 1 ELSE 0 END) AS excess_items,\n  SUM(stock_value) AS stock_value,\n  ROUND(AVG(days_of_cover), 1) AS avg_days\nFROM inventory${W(wp)}\nGROUP BY ${dcol}\nORDER BY ${sortBy} DESC${p.topN ? `\nLIMIT ${p.topN}` : ''}`;
+        R.sql = `-- תמונת מלאי נכון ל-${ctx.meta.snapshot}\nSELECT\n  ${dcol},\n  COUNT(*) AS items,\n  SUM(CASE WHEN stock_status = 'חוסר צפוי' THEN 1 ELSE 0 END) AS shortage_items,\n  SUM(CASE WHEN stock_status = 'עודף' THEN 1 ELSE 0 END) AS excess_items,\n  SUM(stock_value) AS stock_value,\n  ROUND(AVG(days_of_cover), 1) AS avg_days\nFROM inventory${W(wp)}\nGROUP BY ${dcol}\nORDER BY ${sortBy} DESC${p.topN ? `\nLIMIT ${p.topN}` : ''}`;
         R.viz = { type: 'bar', x: dcol, y: [sortBy], horizontal: true, highlight: true };
         R.aux.inv = p.inv; R.aux.sortBy = sortBy;
         return R;
@@ -545,6 +588,7 @@
       const x = R.viz.x;
 
       if (p.intent === 'inventory') return invInsight(p, R, rows);
+      if (p.intent === 'promo') return promoInsight(p, rows);
 
       if (p.intent === 'growth') {
         const { cur, prev } = R.aux;
@@ -690,6 +734,29 @@
     }
     const n3 = (tcol) => (tcol === 'sale_month' ? '3 החודשים' : 'הרבעונים');
 
+    function mechanic(r) {
+      if (r.margin_pct >= 30) return { label: '15% הנחה', disc: 15 };
+      if (r.margin_pct >= 24.5) return { label: '10% הנחה', disc: 10 };
+      return { label: 'קנה 2 וחסוך 8%', disc: 8 };
+    }
+    function promoInsight(p, rows) {
+      const cid = p.filters.customer && p.filters.customer[0];
+      const who = cid ? ctx.meta.custById[cid].customer_name : 'כלל הלקוחות';
+      const bullets = rows.slice(0, 4).map((r) => {
+        const m = mechanic(r);
+        const lift = (r.rev_l3m / 3) * 0.25;
+        return `${b(r.product)}: רווחיות ${num(FMT.pct(r.margin_pct))}, מכירות ${num(FMT.signedPct(r.growth_pct))} מול אשתקד → מבצע ${b(m.label)} למשך חודש; תוספת הכנסה משוערת ${num(FMT.money(lift))}.`;
+      });
+      if (cid) {
+        const ws = whitespace(cid, 1);
+        if (ws.rows[0]) bullets.push(`הזדמנות להשקה: ${b(ws.rows[0].product)} עדיין לא נמכר אצל הלקוח, אבל נמכר ב-${num(ws.rows[0].stores)} סניפים ברשת. מומלץ להכניס אותו למדף במחיר השקה.`);
+      }
+      return {
+        headline: rows.length ? `הצעת מבצע ל${esc(who)}: ${num(rows.length)} מוצרים רווחיים שהמכירות שלהם נחלשו` : `לא נמצאו מוצרים שמתאימים למבצע אצל ${esc(who)}`,
+        bullets: bullets.length ? bullets : ['כל המוצרים צומחים מול אשתקד. אפשר לשקול מבצע נפח על הקטגוריה המובילה.']
+      };
+    }
+
     function invInsight(p, R, rows) {
       const x = R.viz.x;
       if (R.aux.inv === 'overview' && !x) {
@@ -699,7 +766,7 @@
           headline: `שווי מלאי כולל ${num(FMT.money(tot))} — ${num(s ? s.items : 0)} פריטים בסיכון חוסר`,
           bullets: [
             e ? `${num(FMT.money(e.stock_value))} (${num(FMT.pct(e.stock_value / tot * 100))}) כלואים במלאי עודף (מעל 60 ימי מלאי).` : '',
-            `תמונת המלאי נכונה ל-30/09/2026; ימי מלאי מחושבים לפי ממוצע מכירות יומי ב-3 החודשים האחרונים.`
+            `תמונת המלאי נכונה ל-${esc(ctx.meta.snapshot)}; ימי מלאי מחושבים לפי ממוצע מכירות יומי ב-3 החודשים האחרונים.`
           ].filter(Boolean)
         };
       }
@@ -743,7 +810,7 @@
       const out = [];
       const meas = MEASURES[p.measure];
       const tPhrase = p.time ? ' ' + p.time.phrase : '';
-      const fPhrase = (skip) => Object.entries(p.filters).filter(([d]) => ![].concat(skip || []).includes(d) && !(skip === 'category' && d === 'product')).map(([d, v]) =>
+      const fPhrase = (skip) => Object.entries(p.filters).filter(([d]) => !(p.flags.locked && d === 'customer') && ![].concat(skip || []).includes(d) && !(skip === 'category' && d === 'product')).map(([d, v]) =>
         d === 'segment' ? (v[0] === 'בריאות' ? ' בקרב מוצרי בריאות' : '') : v.length > 1 ? '' : ` ב${DIMS[d].sing} ${v[0]}`).join('');
       const x = R.viz && R.viz.x;
       const top = rows && rows[0] && x ? rows[0][x] : null;
@@ -787,8 +854,16 @@
         out.push(`מה מגמת ${meas.def} החודשית${fPhrase()}?`);
         out.push('השווה בין הרווח הגולמי של מוצרי הבריאות למוצרים הרגילים');
       }
+      if (p.intent === 'promo') out.unshift('מה הרווחיות לפי קטגוריה?', 'אילו מוצרים בסיכון חוסר במלאי?', 'מה מגמת ההכנסות החודשית?');
+      let list = out;
+      if (p.flags.locked) {
+        list = out.filter((s) => !/(לפי|ב)(רשת|סניף|לקוח|עיר)|לפי (רשת|סניף|לקוח|עיר)|מוצרי הבריאות למוצרים|לפי רשת/.test(s))
+          .map((s) => s.replace(/ בלקוח \d+/g, ''));
+        ['הכן לי הצעת מבצע', 'מה הרווחיות לפי קטגוריה?', 'אילו קטגוריות צמחו הכי הרבה ברבעון האחרון?', 'מה הרווחיות שלו בקטגוריית הבריאות?', 'אילו מוצרים בסיכון חוסר במלאי?']
+          .forEach((x) => list.push(x));
+      }
       const seen = new Set([normalize(p.q)]);
-      return out.filter((s) => { const k = normalize(s); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 3);
+      return list.filter((s) => { const k = normalize(s); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 3);
     }
 
     // ------------------------------------------------------ public: ask
@@ -806,6 +881,7 @@
       if (p.intent === 'growth') parts.push(`צמיחה ב${meas.he}`);
       else if (p.intent === 'trend') parts.push(`מגמת ${meas.he}`);
       else if (p.intent === 'share') parts.push(`נתח ${meas.he}`);
+      else if (p.intent === 'promo') parts.push('הצעת מבצע');
       else if (p.intent === 'inventory') parts.push(p.inv === 'shortage' ? 'סיכון חוסר במלאי' : p.inv === 'excess' ? 'עודפי מלאי' : 'מצב המלאי');
       else parts.push(meas.he);
       if (dims.length) parts.push('לפי ' + dims.join(' ו'));
@@ -814,7 +890,7 @@
 
     function chips(p, R) {
       const c = [];
-      const intents = { growth: 'צמיחה', trend: 'מגמה', share: 'נתח', rank: 'דירוג', total: 'סיכום', inventory: 'מלאי' };
+      const intents = { promo: 'הצעת מבצע', growth: 'צמיחה', trend: 'מגמה', share: 'נתח', rank: 'דירוג', total: 'סיכום', inventory: 'מלאי' };
       c.push(intents[p.intent] || '');
       if (p.intent === 'growth' && R.aux.cur) c.push(`${R.aux.cur.label} מול ${R.aux.prev.label}`);
       else if (p.time) c.push(p.time.label);
@@ -823,10 +899,20 @@
       return c.filter(Boolean);
     }
 
-    function ask(question) {
+    function ask(question, opts) {
+      opts = opts || {};
       if (ctx.mode === 'generic') return askGeneric(question);
       let p = parse(question);
       if (ctx.last && (p.flags.cont || (!p.flags.signals && (Object.keys(p.filters).length || p.time)))) p = mergeWithLast(p);
+      if (opts.customer && ctx.meta.custById[opts.customer]) {
+        // context lock: every question runs on this one account
+        p.filters.customer = [+opts.customer];
+        ['chain', 'branch', 'city', 'manager'].forEach((d) => { delete p.filters[d]; });
+        p.dims = p.dims.filter((d) => !['customer', 'branch', 'chain', 'city', 'manager'].includes(d));
+        if (!p.intent && p.flags.cont !== true) p.intent = p.measure !== 'revenue' || p.time || Object.keys(p.filters).length > 1 ? 'total' : null;
+        if (!p.dims.length && ['rank', 'share'].includes(p.intent)) p.intent = 'total';
+        p.flags.locked = true;
+      }
       if (!p.intent) return helpAnswer(question);
       if (p.intent === 'growth' && !p.dims.length && p.flags.yoy === undefined) p.flags.yoy = false;
       const R = build(p);
@@ -969,7 +1055,83 @@
       };
     }
 
-    return { loadMeta, ask, parse, runCustom, autoViz, setGeneric, ctx, FMT, colLabel, colKind, fmtBy };
+    // ------------------------------------------------------ 360° account brief
+    function whitespace(cid, limit) {
+      const c = ctx.meta.custById[cid], w = windows();
+      const sql = `-- מוצרים שנמכרים ברשת ${c.chain} אבל מעולם לא נמכרו אצל הלקוח\nSELECT * FROM (\n  SELECT\n    product,\n    category,\n    SUM(CASE WHEN customer_id = ${cid} THEN units ELSE 0 END) AS customer_units,\n    COUNT(DISTINCT customer_id) AS stores,\n    ROUND(SUM(CASE WHEN sale_month >= '${w.h6}' THEN revenue ELSE 0 END) / COUNT(DISTINCT customer_id) / 6) AS avg_monthly_rev\n  FROM sales\n  WHERE chain = ${sq(c.chain)}\n  GROUP BY product, category\n) AS t\nWHERE t.customer_units = 0 AND t.avg_monthly_rev > 0\nORDER BY t.avg_monthly_rev DESC\nLIMIT ${limit || 5}`;
+      return { sql, rows: alasql(sql) };
+    }
+
+    function brief(cid) {
+      const M = ctx.meta, c = M.custById[cid];
+      if (!c) return null;
+      const t0 = (global.performance || Date).now();
+      const w = windows();
+      const y = +M.lastYear, lm = M.lastMonth.slice(5);
+      const Q = {};
+      const runQ = (k, label, sql) => { Q[k] = { label, sql, rows: alasql(sql) }; return Q[k].rows; };
+      runQ('profile', 'כרטיס לקוח', `SELECT *\nFROM customers\nWHERE customer_id = ${cid}`);
+      const k = runQ('kpi', 'מדדי ליבה (מכירות)', `SELECT\n  SUM(CASE WHEN sale_year = ${y} THEN revenue ELSE 0 END) AS ytd_revenue,\n  SUM(CASE WHEN sale_year = ${y - 1} AND sale_month <= '${y - 1}-${lm}' THEN revenue ELSE 0 END) AS ytd_prev_revenue,\n  ROUND(SUM(CASE WHEN sale_year = ${y} THEN gross_profit ELSE 0 END) * 100 / NULLIF(SUM(CASE WHEN sale_year = ${y} THEN revenue ELSE 0 END), 0), 1) AS ytd_margin_pct\nFROM sales\nWHERE customer_id = ${cid}`)[0];
+      const st = runQ('stock', 'יתרת מלאי', `SELECT\n  SUM(stock_value) AS stock_value,\n  SUM(stock_units) AS stock_units,\n  SUM(CASE WHEN days_of_cover < 7 THEN 1 ELSE 0 END) AS shortage_items\nFROM inventory\nWHERE customer_id = ${cid}`)[0];
+      const chainM = runQ('chainMargin', 'רווחיות ממוצעת ברשת', `SELECT ROUND(SUM(gross_profit) * 100 / SUM(revenue), 1) AS margin_pct\nFROM sales\nWHERE chain = ${sq(c.chain)} AND sale_year = ${y}`)[0];
+      const trend = runQ('trend', 'מגמת רכישות חודשית (12 חודשים מול אשתקד)', `SELECT\n  sale_month,\n  SUM(revenue) AS revenue,\n  SUM(gross_profit) AS gross_profit\nFROM sales\nWHERE customer_id = ${cid}\n  AND sale_month >= '${ymAdd(M.lastMonth, -23)}'\nGROUP BY sale_month\nORDER BY sale_month`);
+      const lost = runQ('lost', 'מוצרים שירדו חד או הופסקו', `SELECT * FROM (\n  SELECT\n    product,\n    category,\n    SUM(CASE WHEN sale_month >= '${w.l3}' THEN revenue ELSE 0 END) AS rev_l3m,\n    SUM(CASE WHEN sale_month >= '${w.ly3a}' AND sale_month <= '${w.ly3b}' THEN revenue ELSE 0 END) AS rev_ly3m,\n    SUM(CASE WHEN sale_month >= '${w.l60}' THEN units ELSE 0 END) AS units_l60d\n  FROM sales\n  WHERE customer_id = ${cid}\n  GROUP BY product, category\n) AS t\nWHERE t.rev_ly3m > 0\n  AND (t.units_l60d = 0 OR t.rev_l3m < t.rev_ly3m * 0.75)\nORDER BY t.rev_ly3m DESC`);
+      const ws = whitespace(cid, 5); Q.whitespace = { label: 'White Space: נמכר ברשת, חסר אצל הלקוח', sql: ws.sql, rows: ws.rows };
+      const alerts = runQ('alerts', 'התראות מלאי אצל הלקוח', `SELECT\n  product,\n  category,\n  stock_units,\n  avg_daily_units,\n  days_of_cover,\n  stock_status\nFROM inventory\nWHERE customer_id = ${cid}\n  AND stock_status <> 'תקין'\nORDER BY days_of_cover ASC`);
+      const cats = runQ('cats', 'ביצועי קטגוריות מול אשתקד (3 חודשים)', `SELECT\n  category,\n  SUM(CASE WHEN sale_month >= '${w.l3}' THEN revenue ELSE 0 END) AS rev_l3m,\n  ROUND((SUM(CASE WHEN sale_month >= '${w.l3}' THEN revenue ELSE 0 END) / NULLIF(SUM(CASE WHEN sale_month >= '${w.ly3a}' AND sale_month <= '${w.ly3b}' THEN revenue ELSE 0 END), 0) - 1) * 100, 1) AS growth_pct\nFROM sales\nWHERE customer_id = ${cid}\nGROUP BY category\nORDER BY growth_pct DESC`);
+      const ms = (global.performance || Date).now() - t0;
+
+      const today = new Date(Date.UTC(+M.snapshot.slice(0, 4), +M.snapshot.slice(5, 7) - 1, +M.snapshot.slice(8, 10) + 1));
+      const lo = c.last_order_date.split('-').map(Number);
+      const daysSince = Math.round((today - Date.UTC(lo[0], lo[1] - 1, lo[2])) / 864e5);
+      const yoy = k.ytd_prev_revenue ? (k.ytd_revenue / k.ytd_prev_revenue - 1) * 100 : null;
+      const util = c.open_balance / c.credit_limit * 100;
+      const shortages = alerts.filter((r) => r.stock_status === 'חוסר צפוי');
+      const excess = alerts.filter((r) => r.stock_status === 'עודף');
+      const abandoned = lost.filter((r) => r.units_l60d === 0);
+      const declining = lost.filter((r) => r.units_l60d > 0);
+
+      // ranked talking points (most urgent first)
+      const tp = [];
+      if (shortages.length) tp.push({ tone: 'risk', text: `${num(shortages.length)} פריטים עם פחות מ-7 ימי מלאי, בהם ${shortages.slice(0, 2).map((r) => b(r.product)).join(' ו-')}. כדאי לסגור הזמנה דחופה כבר בפגישה.` });
+      if (abandoned.length) tp.push({ tone: 'risk', text: `${abandoned.map((r) => b(r.product)).join(', ')} ${abandoned.length > 1 ? 'לא הוזמנו' : 'לא הוזמן'} ב-60 הימים האחרונים. צריך לברר את הסיבה ולהחזיר למדף.` });
+      if (declining.length) tp.push({ tone: 'risk', text: `${b(declining[0].product)} ירד ב-${num(FMT.pct(Math.abs((declining[0].rev_l3m / declining[0].rev_ly3m - 1) * 100)))} מול אשתקד. כדאי לבדוק אם מתחרה נכנס למבצע.` });
+      if (ws.rows.length) tp.push({ tone: 'opp', text: `${b(ws.rows[0].product)} נמכר ב-${num(ws.rows[0].stores)} סניפים ברשת, ${num(FMT.money(ws.rows[0].avg_monthly_rev))} בחודש לסניף בממוצע, ולא קיים אצל הלקוח. להציע הכנסה למדף.` });
+      if (util >= 85) tp.push({ tone: 'warn', text: `ניצול מסגרת האשראי עומד על ${num(FMT.pct(util))}. כדאי לתאם תשלום לפני הזמנה גדולה.` });
+      if (daysSince > 45) tp.push({ tone: 'warn', text: `הלקוח לא הזמין ${num(daysSince)} ימים (הזמנה אחרונה ב-${esc(c.last_order_date)}).` });
+      if (yoy != null) tp.push({ tone: yoy >= 0 ? 'good' : 'risk', text: yoy >= 0 ? `המכירות מתחילת השנה צמחו ב-${num(FMT.pct(yoy))} מול התקופה המקבילה. זו פתיחה טובה לפגישה.` : `המכירות מתחילת השנה ירדו ב-${num(FMT.pct(Math.abs(yoy)))} מול התקופה המקבילה. צריך להבין את הסיבה ולבנות תוכנית התאוששות.` });
+      if (cats[0] && cats[0].growth_pct > 0) tp.push({ tone: 'good', text: `הקטגוריה הצומחת ביותר: ${b(cats[0].category)} (${num(FMT.signedPct(cats[0].growth_pct))} ב-3 החודשים האחרונים מול אשתקד).` });
+      if (excess.length) tp.push({ tone: 'warn', text: `${num(excess.length)} פריטים במלאי עודף (מעל 60 ימים). אפשר להציע מבצע שיפנה אותם מהמדף.` });
+
+      const points = [
+        ...lost.map((r) => ({ type: r.units_l60d === 0 ? 'lost' : 'decline', product: r.product, category: r.category,
+          detail: r.units_l60d === 0 ? `לא הוזמן ב-60 יום (היה ${FMT.money(r.rev_ly3m)} ברבעון המקביל)` : `${FMT.signedPct((r.rev_l3m / r.rev_ly3m - 1) * 100)} מול אשתקד (3 חודשים)`,
+          action: r.units_l60d === 0 ? 'לברר סיבה ולהחזיר למדף' : 'לבדוק מבצע של מתחרה; להציע מבצע נגדי' })),
+        ...ws.rows.map((r) => ({ type: 'white', product: r.product, category: r.category,
+          detail: `נמכר ב-${r.stores} סניפים ברשת · ${FMT.money(r.avg_monthly_rev)} לחודש לסניף`, action: 'להציע הכנסה למדף במחיר השקה' })),
+        ...alerts.map((r) => ({ type: r.stock_status === 'חוסר צפוי' ? 'stock' : 'excess', product: r.product, category: r.category,
+          detail: `${r.days_of_cover} ימי מלאי · ${FMT.num(r.stock_units)} יח׳ במלאי`, action: r.stock_status === 'חוסר צפוי' ? 'הזמנה דחופה' : 'מבצע להורדת מלאי' }))
+      ];
+
+      return {
+        customer: c, kpi: { ...k, yoy, ...st, chain_margin_pct: chainM.margin_pct }, util, daysSince,
+        trend, lost, whitespace: ws.rows, alerts, cats, talking: tp.slice(0, 5), points, queries: Q, ms,
+        lastMonth: M.lastMonth, today: today.toISOString().slice(0, 10)
+      };
+    }
+
+    function findCustomer(text) {
+      const M = ctx.meta;
+      if (!M || !M.customers.length) return null;
+      const t = normalize(text);
+      const m = /(?:^|[^0-9])(1\d{3})(?![0-9])/.exec(t);
+      if (m && M.custById[+m[1]]) return M.custById[+m[1]];
+      const lower = t.toLowerCase();
+      return [...M.customers].sort((a, z) => z.customer_name.length - a.customer_name.length).find((c) => lower.includes(c.customer_name.toLowerCase()))
+        || M.customers.find((c) => hasTerm(' ' + lower + ' ', c.branch.toLowerCase())) || null;
+    }
+
+    return { brief, findCustomer, loadMeta, ask, parse, runCustom, autoViz, setGeneric, ctx, FMT, colLabel, colKind, fmtBy };
   }
 
   global.TQEngine = { create: createEngine, FMT, colLabel, colKind, fmtBy, normalize, esc };

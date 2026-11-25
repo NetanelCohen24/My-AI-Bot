@@ -1,5 +1,5 @@
 /* =====================================================================
-   TradeQuery AI — Application shell (chat stream ⇄ live canvas ⇄ board)
+   AccountBrief AI — Application shell (calendar ⇄ chat ⇄ live canvas ⇄ board)
    ===================================================================== */
 (function () {
   'use strict';
@@ -29,14 +29,16 @@
   const VIZ_NAME = { bar: 'גרף עמודות', line: 'גרף קו', doughnut: 'גרף טבעת', table: 'טבלה', kpi: 'כרטיסי מדדים', help: 'עזרה' };
 
   const STARTERS = [
-    ['צמיחה', 'איזו קטגוריה הציגה את הצמיחה הגבוהה ביותר ברבעון האחרון ברשת סופר גל?'],
-    ['רווחיות', 'השווה בין הרווח הגולמי של מוצרי הבריאות למוצרים הרגילים'],
-    ['מגמה', 'מה מגמת ההכנסות החודשית לפי רשת?'],
+    ['תדרוך', 'פתח תדרוך ללקוח 1004'],
+    ['מבצע', 'הכן הצעת מבצע ללקוח 1012'],
+    ['לקוחות', 'איזה לקוח הציג את הצמיחה הגבוהה ביותר ברבעון האחרון?'],
     ['מלאי', 'אילו מוצרים בסיכון חוסר במלאי?'],
-    ['EN', 'Top 5 products by revenue in 2025']
+    ['EN', 'Revenue by account manager in 2026']
   ];
+  const LOCKED_ASKS = ['מה הרווחיות שלו בקטגוריית הבריאות?', 'הכן לי הצעת מבצע', 'אילו קטגוריות צמחו הכי הרבה ברבעון האחרון?', 'מה מגמת ההכנסות החודשית?'];
 
-  const S = { answers: [], current: -1, board: [], history: [], hIdx: -1, busy: false, view: 'canvas', mode: 'builtin', fileName: null };
+  const S = { answers: [], current: -1, board: [], history: [], hIdx: -1, busy: false, view: 'canvas', mode: 'builtin', fileName: null, lock: null };
+  const CAL = { meetings: [], source: 'פגישות דמו', active: null };
   let E;
 
   // ------------------------------------------------------------ storage
@@ -53,34 +55,36 @@
     }
     if (window.TQ_EMBED) document.documentElement.classList.add('embed');
     loadBuiltin();
-    S.board = store.get('tq.board.v1', []);
-    $('#boardTitle').textContent = store.get('tq.boardTitle', 'לוח סיכום אנליטי');
+    S.board = store.get('ab.board.v1', []);
+    $('#boardTitle').textContent = store.get('ab.boardTitle', 'לוח סיכום אנליטי');
     updateBoardCount(false);
     renderStarters();
     bindUI();
-    // opening artifact: a live overview of the dataset
-    const a = E.ask('מה מגמת ההכנסות החודשית של מוצרי בריאות לעומת רגילים?');
-    a.chips = ['סקירת פתיחה', ...a.chips.slice(1)];
-    a.opening = true;
-    E.ctx.last = null;
-    S.answers.push(a); S.current = 0;
-    renderArtifact(a, true);
-    updateHistoryNav();
+    bindCalendar();
+    setMeetings(demoMeetings(), 'פגישות דמו');
+    setInterval(renderMeetings, 60000);
+    // opening artifact: the brief for the next meeting on today's calendar
+    const now = Date.now();
+    const next = CAL.meetings.find((m) => m.customer && m.end > now) || CAL.meetings.find((m) => m.customer);
+    if (next) openBrief(next.customer.customer_id, next, { opening: true });
     $('#question').focus();
   }
 
   function loadBuiltin() {
     const t0 = performance.now();
-    const { sales, inventory } = TQData.build();
-    ['sales', 'inventory'].forEach((t) => { if (alasql.tables[t]) alasql(`DROP TABLE ${t}`); alasql(`CREATE TABLE ${t}`); });
+    const { sales, inventory, customers } = TQData.build();
+    ['sales', 'inventory', 'customers'].forEach((t) => { if (alasql.tables[t]) alasql(`DROP TABLE ${t}`); alasql(`CREATE TABLE ${t}`); });
     alasql.tables.sales.data = sales;
     alasql.tables.inventory.data = inventory;
+    alasql.tables.customers.data = customers;
     E = E || TQEngine.create(alasql);
     E.setGeneric(null);
     const meta = E.loadMeta();
     S.mode = 'builtin'; S.fileName = null;
-    setSource(`FMCG מובנה · ${meta.rows.toLocaleString('en-US')} שורות מכירה · ${inventory.length.toLocaleString('en-US')} שורות מלאי`, false);
-    console.info(`[TradeQuery] in-memory DB ready in ${(performance.now() - t0).toFixed(0)}ms`);
+    setSource(`FMCG מובנה · ${customers.length} לקוחות · ${meta.rows.toLocaleString('en-US')} שורות מכירה`, false);
+    $('#custList').innerHTML = customers.map((c) => `<option value="${c.customer_id} · ${esc(c.customer_name)}"></option>`).join('');
+    if (CAL.meetings.length) { CAL.meetings.forEach(enrichMeeting); renderMeetings(); }
+    console.info(`[AccountBrief] in-memory DB ready in ${(performance.now() - t0).toFixed(0)}ms`);
   }
 
   function setSource(label, custom) {
@@ -114,6 +118,7 @@
       $$('.msg', $('#stream')).forEach((m) => m.remove());
       $('#welcome').hidden = false;
       E.ctx.last = null;
+      setLock(null);
       toast('שיחה חדשה התחילה');
     });
 
@@ -135,7 +140,7 @@
       delete btn.dataset.armed; btn.lastChild.textContent = ' נקה לוח';
       S.board = []; saveBoard(); renderBoard(); syncPinButtons();
     });
-    $('#boardTitle').addEventListener('input', () => store.set('tq.boardTitle', $('#boardTitle').textContent.trim()));
+    $('#boardTitle').addEventListener('input', () => store.set('ab.boardTitle', $('#boardTitle').textContent.trim()));
 
     // schema drawer
     $('#sourcePill').addEventListener('click', openSchema);
@@ -148,7 +153,7 @@
     window.addEventListener('dragover', (e) => { e.preventDefault(); });
     window.addEventListener('drop', (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
 
-    window.addEventListener('afterprint', () => { $$('.print-img').forEach((img) => img.remove()); $$('.chart-wrap canvas').forEach((c) => { c.style.display = ''; }); });
+    window.addEventListener('afterprint', () => { document.documentElement.classList.remove('print-brief'); $$('.print-img').forEach((img) => img.remove()); $$('.chart-wrap canvas').forEach((c) => { c.style.display = ''; }); });
   }
 
   function autoGrow() { const ta = $('#question'); ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'; }
@@ -172,7 +177,16 @@
     ask(q);
   }
 
+  const BRIEF_RE = /(תדרוך|דשבורד|brief|dashboard|360)/i;
   async function ask(q) {
+    // "פתח תדרוך ללקוח 1004" or just "1004" opens the account brief instead of a chart answer
+    const cust = S.mode === 'builtin' ? E.findCustomer(q) : null;
+    const bare = q.replace(/[#?!.,״"׳']/g, '').replace(/(פתח|הכן|הצג|תן|לי|את|ה?תדרוך|דשבורד|brief|open|show|360°?|ל?לקוח|customer|account|של|for|ל-?)/gi, '').trim();
+    if (cust && (BRIEF_RE.test(q) || /^\d{4}$/.test(bare) || bare === cust.customer_name)) {
+      $('#welcome').hidden = true;
+      openBrief(cust.customer_id, null);
+      return;
+    }
     S.busy = true;
     $('#sendBtn').disabled = true;
     S.history.push(q); S.hIdx = -1;
@@ -184,7 +198,7 @@
     stream.insertAdjacentHTML('beforeend', `<div class="msg msg-user"><div class="bubble" dir="auto">${esc(q)}</div></div>`);
     const think = document.createElement('div');
     think.className = 'msg msg-ai';
-    think.innerHTML = `<div class="avatar">TQ</div><div class="ai-body"><div class="thinking"><span class="dots"><i></i><i></i><i></i></span><span class="t">מפענח את השאלה…</span></div></div>`;
+    think.innerHTML = `<div class="avatar">AB</div><div class="ai-body"><div class="thinking"><span class="dots"><i></i><i></i><i></i></span><span class="t">מפענח את השאלה…</span></div></div>`;
     stream.appendChild(think);
     scrollStream();
 
@@ -193,7 +207,7 @@
     let ans, err;
     for (let i = 0; i < steps.length; i++) {
       markStep(i); $('.thinking .t', think).textContent = steps[i] + '…';
-      if (i === 2) { try { ans = E.ask(q); } catch (e) { err = e; console.error(e); } }
+      if (i === 2) { try { ans = E.ask(q, { customer: S.mode === 'builtin' ? S.lock : null }); } catch (e) { err = e; console.error(e); } }
       await sleep(i === 2 ? 220 : 150);
     }
 
@@ -222,7 +236,8 @@
     const meta = a.sql
       ? `<span>${esc(VIZ_NAME[vt] || vt)}</span><span class="sep"></span><span>${a.rows.length.toLocaleString('en-US')} שורות</span><span class="sep"></span><bdi>${a.ms != null ? a.ms.toFixed(0) + 'ms' : ''}</bdi>${a.parse && a.parse.merged ? '<span class="sep"></span><span>המשך לשאלה הקודמת</span>' : ''}`
       : '<span>לא זוהה מדד או חיתוך</span>';
-    return `<div class="ai-card" data-idx="${idx}"><div class="ai-headline">${a.insight.headline}</div><div class="ai-meta">${meta}<span class="open-link">בקנבס ${ICON.arrow}</span></div></div>`;
+    const lock = a.parse && a.parse.filters && a.parse.filters.customer && S.lock ? `<span class="lock-tag">לקוח #${a.parse.filters.customer[0]}</span>` : '';
+    return `<div class="ai-card" data-idx="${idx}"><div class="ai-headline">${a.insight.headline}</div><div class="ai-meta">${lock}${meta}<span class="open-link">בקנבס ${ICON.arrow}</span></div></div>`;
   }
 
   function followupsHTML(a) {
@@ -265,6 +280,7 @@
   function renderArtifact(a, animate) {
     const stage = $('#stage');
     stage.scrollTop = 0;
+    if (a.kind === 'brief') return renderBrief(a, animate);
     if (a.viz.type === 'help') return renderHelp(a, animate);
     const vt = a.vizType || a.viz.type;
     const types = TQCharts.available(a.viz, a.rows);
@@ -438,7 +454,7 @@
 
   // ------------------------------------------------------------ board
   function isPinned(a) { return !!(a.pinId && S.board.some((p) => p.id === a.pinId)); }
-  function saveBoard() { store.set('tq.board.v1', S.board); updateBoardCount(true); }
+  function saveBoard() { store.set('ab.board.v1', S.board); updateBoardCount(true); }
   function updateBoardCount(bump) {
     const c = $('#boardCount');
     c.textContent = S.board.length;
@@ -500,7 +516,7 @@
         <div class="note" contenteditable="true" data-placeholder="הוסיפו הערה לדוח…">${esc(p.note || '')}</div>`;
       grid.appendChild(card);
       TQCharts.render($('.pin-viz', card), p.viz, p.rows, { type: p.vizType, compact: true, static: staticCharts, labels: p.labels, maxRows: 40 });
-      $('.note', card).addEventListener('input', (e) => { p.note = e.target.textContent; store.set('tq.board.v1', S.board); });
+      $('.note', card).addEventListener('input', (e) => { p.note = e.target.textContent; store.set('ab.board.v1', S.board); });
       $$('[data-act]', card).forEach((btn) => btn.addEventListener('click', () => {
         const act = btn.dataset.act;
         if (act === 'remove') {
@@ -655,6 +671,419 @@
       if (set.size <= 300) c.values = [...set];
     });
     return { rows, columns: columns.map(({ key, ...rest }) => rest) };
+  }
+
+  // ============================================================ meetings calendar
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const hhmm = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  function dayLabel(d) {
+    const diff = Math.round((dayStart(d) - dayStart(new Date())) / 864e5);
+    if (diff === 0) return 'היום';
+    if (diff === 1) return 'מחר';
+    if (diff === -1) return 'אתמול';
+    return d.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric' });
+  }
+
+  function demoMeetings() {
+    const n = new Date();
+    const at = (off, h, m, dur) => {
+      const start = new Date(n.getFullYear(), n.getMonth(), n.getDate() + off, h, m);
+      return { start: start.getTime(), end: start.getTime() + (dur || 60) * 60000 };
+    };
+    return [
+      { ...at(0, 9, 0, 30), title: 'שיחת מעקב הזמנות | לקוח 1009 (שוק עירוני הרצל)' },
+      { ...at(0, 10, 30), title: 'פגישת סחר שנתית | לקוח 1004 (סופר גל דיזנגוף)', location: 'דיזנגוף 50, תל אביב' },
+      { ...at(0, 14, 0), title: 'מו״מ מבצעים | לקוח 1012' },
+      { ...at(0, 16, 30, 45), title: 'סקירת מדפים רבעונית | לקוח 1017' },
+      { ...at(1, 11, 0), title: 'הצגת קטגוריית בריאות | לקוח 1013' }
+    ];
+  }
+
+  function enrichMeeting(m) {
+    m.customer = S.mode === 'builtin' && E ? E.findCustomer([m.title, m.location, m.description].filter(Boolean).join(' ')) : null;
+    m.label = String(m.title || 'פגישה ללא כותרת').split('|')[0].trim();
+    return m;
+  }
+
+  function setMeetings(list, source) {
+    CAL.meetings = list.map(enrichMeeting).sort((a, z) => a.start - z.start);
+    CAL.source = source;
+    $('#calSource').textContent = source;
+    $('#calGoogle').classList.toggle('on', /Google/.test(source));
+    renderMeetings();
+  }
+
+  function renderMeetings() {
+    const ol = $('#meetings');
+    if (!ol) return;
+    const now = Date.now();
+    if (!CAL.meetings.length) {
+      ol.innerHTML = '<li class="meetings-empty">אין פגישות להצגה. ייבאו יומן או התחברו ל-Google Calendar.</li>';
+      return;
+    }
+    let lastDay = null;
+    ol.innerHTML = CAL.meetings.map((m, i) => {
+      const d = new Date(m.start);
+      const day = dayLabel(d);
+      const sep = day !== lastDay ? `<li class="day-sep">${esc(day)}</li>` : '';
+      lastDay = day;
+      const mins = Math.round((m.start - now) / 60000);
+      let badge = '';
+      if (!m.customer) badge = '<span class="m-badge nocust">ללא קוד לקוח</span>';
+      else if (now >= m.start && now < m.end) badge = '<span class="m-badge now">עכשיו</span>';
+      else if (mins > 0 && mins <= 120) badge = `<span class="m-badge soon">בעוד ${mins < 60 ? mins + ' דק׳' : Math.floor(mins / 60) + ':' + pad2(mins % 60) + ' ש׳'}</span>`;
+      else if (m.end <= now) badge = '<span class="m-badge">הסתיימה</span>';
+      const dur = m.end && m.allDay !== true ? Math.round((m.end - m.start) / 60000) : null;
+      const cust = m.customer ? `<b>#${m.customer.customer_id}</b> · ${esc(m.customer.customer_name)}` : esc(m.location || 'לא זוהה לקוח בכותרת');
+      return `${sep}<li><button type="button" class="meeting ${m.end <= now ? 'past' : ''} ${CAL.active === m ? 'active' : ''}" data-meeting="${i}">
+        <span class="m-time">${m.allDay ? 'כל היום' : hhmm(d)}${dur ? `<small>${dur} דק׳</small>` : ''}</span>
+        <span style="min-width:0"><div class="m-title">${esc(m.label)}</div><div class="m-cust">${cust}</div></span>
+        ${badge}</button></li>`;
+    }).join('');
+  }
+
+  function bindCalendar() {
+    $('#meetings').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-meeting]');
+      if (!b) return;
+      const m = CAL.meetings[+b.dataset.meeting];
+      if (!m.customer) { toast('לא מצאתי קוד לקוח בכותרת הפגישה. הוסיפו "לקוח 1004" לכותרת.'); return; }
+      openBrief(m.customer.customer_id, m);
+    });
+    // quick customer search
+    $('#quickSearch').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = $('#custSearch').value.trim();
+      if (!v) return;
+      const c = S.mode === 'builtin' ? E.findCustomer(v) : null;
+      if (!c) { toast(`לא נמצא לקוח עבור "${v}"`); return; }
+      $('#custSearch').value = '';
+      $('#custSearch').blur();
+      openBrief(c.customer_id, null);
+    });
+    $('#custSearch').addEventListener('change', () => {
+      if (/^\d{4} · /.test($('#custSearch').value)) $('#quickSearch').requestSubmit();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !document.activeElement.isContentEditable) { e.preventDefault(); $('#custSearch').focus(); }
+    });
+    $('#lockClear').addEventListener('click', () => { setLock(null); toast('הסינון לפי לקוח נוקה. השאלות ירוצו על כל הנתונים.'); });
+
+    // modals
+    const open = (id) => { $(id).classList.add('open'); $(id).setAttribute('aria-hidden', 'false'); };
+    const close = (el) => { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); };
+    $('#calImport').addEventListener('click', () => open('#importModal'));
+    $('#calGoogle').addEventListener('click', () => { $('#gClientId').value = store.get('ab.gClientId', ''); open('#googleModal'); });
+    $$('.modal').forEach((m) => {
+      m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-close]')) close(m); });
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $$('.modal.open').forEach(close); });
+
+    $('#icsInput').addEventListener('change', async (e) => {
+      const f = e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      try {
+        const list = parseICS(await f.text());
+        if (!list.length) throw new Error('לא נמצאו אירועים בקובץ');
+        setMeetings(list, `קובץ ${f.name}`);
+        close($('#importModal'));
+        toast(`נטענו ${list.length} פגישות מהקובץ`);
+      } catch (err) { toast('שגיאה בקריאת היומן: ' + err.message); }
+    });
+    $('#pasteApply').addEventListener('click', () => {
+      const list = parsePasted($('#pasteMeetings').value);
+      if (!list.length) { toast('לא זיהיתי פגישות. כתבו שורה כמו: 10:30 - פגישת סחר | לקוח 1004'); return; }
+      setMeetings(list, 'רשימה מודבקת');
+      close($('#importModal'));
+      toast(`נטענו ${list.length} פגישות`);
+    });
+    $('#resetDemo').addEventListener('click', () => { setMeetings(demoMeetings(), 'פגישות דמו'); close($('#importModal')); });
+
+    $('#gConnect').addEventListener('click', googleConnect);
+    $('#gTokenFetch').addEventListener('click', () => {
+      const t = $('#gToken').value.trim();
+      if (!t) { gStatus('הדביקו Access Token.', 'err'); return; }
+      fetchGoogleEvents(t);
+    });
+    $('#gSimulate').addEventListener('click', simulateGoogle);
+  }
+
+  // .ics → meetings (VEVENT with SUMMARY / DTSTART / DTEND / LOCATION / DESCRIPTION)
+  function parseICS(text) {
+    const lines = text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
+    const unesc = (v) => v.replace(/\\n/gi, ' ').replace(/\\([,;\\])/g, '$1');
+    const toDate = (v) => {
+      const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(v.trim());
+      if (!m) return null;
+      const [, y, mo, d, h, mi, se, z] = m;
+      if (h == null) return { t: new Date(+y, +mo - 1, +d).getTime(), allDay: true };
+      return { t: z ? Date.UTC(+y, +mo - 1, +d, +h, +mi, +(se || 0)) : new Date(+y, +mo - 1, +d, +h, +mi, +(se || 0)).getTime(), allDay: false };
+    };
+    const events = [];
+    let cur = null;
+    lines.forEach((line) => {
+      if (line === 'BEGIN:VEVENT') { cur = {}; return; }
+      if (line === 'END:VEVENT') { if (cur && cur.start) events.push(cur); cur = null; return; }
+      if (!cur) return;
+      const i = line.indexOf(':');
+      if (i < 0) return;
+      const name = line.slice(0, i).split(';')[0].toUpperCase();
+      const val = line.slice(i + 1);
+      if (name === 'SUMMARY') cur.title = unesc(val);
+      else if (name === 'LOCATION') cur.location = unesc(val);
+      else if (name === 'DESCRIPTION') cur.description = unesc(val).slice(0, 400);
+      else if (name === 'DTSTART') { const d = toDate(val); if (d) { cur.start = d.t; cur.allDay = d.allDay; } }
+      else if (name === 'DTEND') { const d = toDate(val); if (d) cur.end = d.t; }
+    });
+    events.forEach((e) => { if (!e.end) e.end = e.start + 3600000; });
+    const from = dayStart(new Date()), to = from + 14 * 864e5;
+    const upcoming = events.filter((e) => e.end >= from && e.start < to);
+    return (upcoming.length ? upcoming : events.sort((a, z) => z.start - a.start).slice(0, 20)).slice(0, 40);
+  }
+
+  // "10:30 - פגישת סחר | לקוח 1004" / "מחר 09:15 – ..." / "26/11 14:00 ..."
+  function parsePasted(text) {
+    const out = [];
+    const base = new Date();
+    String(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean).forEach((line) => {
+      let off = 0, date = null;
+      if (/^(מחר|tomorrow)/i.test(line)) off = 1;
+      let m = /(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/.exec(line);
+      if (m && !/^\d{1,2}:\d{2}/.test(m[0])) {
+        const y = m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : base.getFullYear();
+        date = new Date(y, +m[2] - 1, +m[1]);
+      }
+      const t = /(\d{1,2}):(\d{2})(?:\s*[-–]\s*(\d{1,2}):(\d{2}))?/.exec(line);
+      const d = date || new Date(base.getFullYear(), base.getMonth(), base.getDate() + off);
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), t ? +t[1] : 9, t ? +t[2] : 0).getTime();
+      const end = t && t[3] ? new Date(d.getFullYear(), d.getMonth(), d.getDate(), +t[3], +t[4]).getTime() : start + 3600000;
+      const title = line.replace(/^(מחר|היום|tomorrow|today)\s*/i, '').replace(m && date ? m[0] : '', '').replace(t ? t[0] : '', '').replace(/^[\s\-–|:·]+/, '').trim();
+      out.push({ start, end, title: title || line });
+    });
+    return out;
+  }
+
+  // Google Calendar API (Google Identity Services token flow, read-only scope)
+  function gStatus(msg, cls) { const el = $('#gStatus'); el.textContent = msg; el.className = 'g-status ' + (cls || ''); }
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      if (document.querySelector(`script[src="${src}"]`)) return res();
+      const sc = Object.assign(document.createElement('script'), { src, async: true, onload: res, onerror: () => rej(new Error('לא ניתן לטעון את ספריית ההתחברות של Google')) });
+      document.head.appendChild(sc);
+    });
+  }
+  async function googleConnect() {
+    const clientId = $('#gClientId').value.trim();
+    if (!/\.apps\.googleusercontent\.com$/.test(clientId)) { gStatus('הזינו Client ID תקין שמסתיים ב-apps.googleusercontent.com', 'err'); return; }
+    store.set('ab.gClientId', clientId);
+    try {
+      gStatus('טוען את חלון ההתחברות של Google…');
+      await loadScript('https://accounts.google.com/gsi/client');
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        callback: (resp) => {
+          if (resp.error) { gStatus('ההתחברות נכשלה: ' + resp.error, 'err'); return; }
+          fetchGoogleEvents(resp.access_token);
+        }
+      });
+      client.requestAccessToken();
+    } catch (e) { gStatus(e.message, 'err'); }
+  }
+  async function fetchGoogleEvents(token) {
+    gStatus('מושך פגישות מ-Google Calendar…');
+    const from = new Date(dayStart(new Date())).toISOString(), to = new Date(dayStart(new Date()) + 7 * 864e5).toISOString();
+    try {
+      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=50&timeMin=${encodeURIComponent(from)}&timeMax=${encodeURIComponent(to)}`;
+      const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      if (r.status === 401) throw new Error('הטוקן לא תקף או שפג תוקפו');
+      if (!r.ok) throw new Error(`Google החזיר שגיאה ${r.status}`);
+      const data = await r.json();
+      const list = (data.items || []).map((it) => {
+        const allDay = !it.start.dateTime;
+        const start = new Date(it.start.dateTime || it.start.date + 'T00:00:00').getTime();
+        const end = new Date((it.end && (it.end.dateTime || it.end.date + 'T00:00:00')) || start + 3600000).getTime();
+        return { start, end, allDay, title: it.summary || '(ללא כותרת)', location: it.location, description: it.description };
+      });
+      setMeetings(list, 'Google Calendar');
+      gStatus(`סונכרנו ${list.length} פגישות ל-7 הימים הקרובים ✓`, 'ok');
+      setTimeout(() => $$('.modal.open').forEach((m) => m.classList.remove('open')), 900);
+    } catch (e) {
+      gStatus('לא הצלחתי למשוך פגישות: ' + e.message + '. בדיקה אפשרית: האם הדומיין רשום ב-Authorized JavaScript origins?', 'err');
+    }
+  }
+  async function simulateGoogle() {
+    const head = $('.cal-head');
+    const bar = Object.assign(document.createElement('div'), { className: 'sync-bar' });
+    head.after(bar);
+    const steps = ['מתחבר ל-Google Calendar (סימולציה)…', 'מאמת הרשאת calendar.readonly…', 'מושך אירועים ל-7 הימים הקרובים…'];
+    for (const st of steps) { gStatus(st); await sleep(450); }
+    const list = demoMeetings();
+    const n = new Date();
+    list.splice(2, 0, { start: new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12, 0).getTime(), end: new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12, 45).getTime(), title: 'ישיבת צוות מכירות שבועית', location: 'חדר ישיבות 2' });
+    list.push({ start: new Date(n.getFullYear(), n.getMonth(), n.getDate() + 2, 10, 0).getTime(), end: new Date(n.getFullYear(), n.getMonth(), n.getDate() + 2, 11, 0).getTime(), title: 'חידוש הסכם שנתי', description: 'customer #1002 · סופר גל חורב' });
+    setMeetings(list, 'Google Calendar · סימולציה');
+    bar.remove();
+    gStatus(`סונכרנו ${list.length} פגישות (סימולציה) ✓`, 'ok');
+    setTimeout(() => $$('.modal.open').forEach((m) => m.classList.remove('open')), 900);
+  }
+
+  // ============================================================ context lock
+  function setLock(id) {
+    S.lock = id || null;
+    const chip = $('#lockChip');
+    if (!S.lock) {
+      chip.hidden = true;
+      $('#question').placeholder = 'שאלו על מכירות, רווחיות, צמיחה או מלאי…';
+      CAL.active = null; renderMeetings();
+      return;
+    }
+    const c = E.ctx.meta.custById[S.lock];
+    $('#lockLabel').textContent = `מסונן לפי לקוח #${c.customer_id} · ${c.customer_name}`;
+    chip.hidden = false;
+    $('#question').placeholder = `שאלו על ${c.customer_name}, למשל: מה הרווחיות שלו?`;
+    E.ctx.last = null;
+  }
+
+  // ============================================================ 360° account brief
+  function nextMeetingFor(id) {
+    const now = Date.now();
+    const ms = CAL.meetings.filter((m) => m.customer && m.customer.customer_id === id);
+    return ms.find((m) => m.end > now) || ms[ms.length - 1] || null;
+  }
+
+  function openBrief(id, meeting, opts) {
+    opts = opts || {};
+    if (S.mode !== 'builtin') { toast('תדרוך לקוח זמין על הדאטה-סט המובנה. חזרו אליו דרך "מבנה הנתונים".'); return; }
+    const br = E.brief(id);
+    if (!br) { toast(`לא נמצא לקוח ${id}`); return; }
+    meeting = meeting || nextMeetingFor(id);
+    CAL.active = meeting || null;
+    renderMeetings();
+    setLock(id);
+    if (S.view !== 'canvas') setView('canvas');
+    const c = br.customer;
+    const a = {
+      kind: 'brief', brief: br, meeting, question: `תדרוך 360° · ${c.customer_name}`, title: 'תדרוך לפגישה',
+      rows: [], viz: { type: 'brief' }, ms: br.ms, sql: null, chips: ['תדרוך 360°'],
+      insight: { headline: `תדרוך מוכן: ${esc(c.customer_name)} <span class="num">#${c.customer_id}</span>`, bullets: br.talking.map((t) => t.text) },
+      followups: LOCKED_ASKS.slice(0, 3)
+    };
+    S.answers.push(a);
+    S.current = S.answers.length - 1;
+    $('#welcome').hidden = true;
+    $$('.followups', $('#stream')).forEach((f) => f.remove());
+    const when = meeting ? `${dayLabel(new Date(meeting.start))} ${hhmm(new Date(meeting.start))} · ${meeting.label}` : 'ללא פגישה ביומן';
+    const stream = $('#stream');
+    stream.insertAdjacentHTML('beforeend', `
+      <div class="msg msg-user"><div class="bubble">${opts.opening ? 'הפגישה הבאה שלי' : 'תדרוך ללקוח'} #${c.customer_id}</div></div>
+      <div class="msg msg-ai"><div class="avatar">AB</div><div class="ai-body">
+        <div class="ai-card" data-idx="${S.current}">
+          <div class="ai-headline">הכנתי תדרוך ל<b>${esc(c.customer_name)}</b>: ${br.talking.length} נקודות לשיחה, ${br.points.length} פריטים לבדיקה.</div>
+          <div class="ai-meta"><span class="lock-tag">לקוח #${c.customer_id}</span><span>${esc(when)}</span><span class="sep"></span><bdi>${br.ms.toFixed(0)}ms</bdi><span class="open-link">בקנבס ${ICON.arrow}</span></div>
+        </div>
+        <div class="followups"><div class="followups-label">${ICON.spark} מכאן כל שאלה תרוץ על הלקוח הזה</div>${a.followups.map((f) => `<button type="button" class="chip-q" data-q="${esc(f)}">${ICON.arrow}<span>${esc(f)}</span></button>`).join('')}</div>
+      </div></div>`);
+    markActiveCard();
+    renderArtifact(a, true);
+    updateHistoryNav();
+    scrollStream();
+    if (!opts.opening && window.matchMedia('(max-width: 860px)').matches) setTimeout(() => $('.canvas-area').scrollIntoView({ behavior: 'smooth', block: 'start' }), 250);
+  }
+
+  const TYPE_LABEL = { lost: 'הופסק', decline: 'ירידה חדה', white: 'White Space', stock: 'חוסר במלאי', excess: 'עודף מלאי' };
+  const FMT = TQEngine.FMT;
+  const fmtDate = (iso) => { const [y, m, d] = String(iso).split('-'); return `${d}/${m}/${y}`; };
+
+  function renderBrief(a, animate) {
+    const stage = $('#stage');
+    const br = a.brief, c = br.customer, k = br.kpi;
+    const m = a.meeting;
+    const utilCls = br.util >= 85 ? 'risk' : br.util >= 70 ? 'warn' : '';
+    const lmLabel = TQCharts.prettyKey(br.lastMonth);
+    const yoyCls = k.yoy == null ? '' : k.yoy >= 0 ? 'pos' : 'neg';
+    const groups = { all: br.points.length, lostdecl: br.points.filter((p) => p.type === 'lost' || p.type === 'decline').length, white: br.points.filter((p) => p.type === 'white').length, stock: br.points.filter((p) => p.type === 'stock' || p.type === 'excess').length };
+    const grpOf = (t) => (t === 'lost' || t === 'decline' ? 'lostdecl' : t === 'white' ? 'white' : 'stock');
+    const art = document.createElement('article');
+    art.className = 'artifact brief' + (animate ? ' enter' : '');
+    art.innerHTML = `
+      <div class="brief-top">
+        <div class="art-chips"><span class="chip intent">תדרוך 360°</span><span class="chip">מכירות עד ${esc(lmLabel)}</span><span class="chip">מלאי נכון ל-${esc(fmtDate(E.ctx.meta.snapshot))}</span></div>
+        <div class="art-actions"><button type="button" class="btn brief-btn" data-print><svg class="ic" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg> הכן דף תדרוך לפגישה (PDF)</button></div>
+      </div>
+      <section class="profile">
+        <div class="cust-id"><div><small>לקוח</small><b>${c.customer_id}</b></div></div>
+        <div style="min-width:0">
+          <h2>${esc(c.customer_name)}</h2>
+          <div class="profile-meta"><span>רשת <b>${esc(c.chain)}</b></span><span>עיר <b>${esc(c.city)}</b></span><span>מנהל תיק <b>${esc(c.account_manager)}</b></span><span>תנאי תשלום <b>${esc(c.payment_terms)}</b></span></div>
+          ${m ? `<div class="next-meet"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>פגישה: ${esc(dayLabel(new Date(m.start)))} ${m.allDay ? '' : hhmm(new Date(m.start))} · ${esc(m.label)}</div>` : '<div class="next-meet" style="background:var(--bg-2);color:var(--muted)">אין פגישה מתוזמנת ביומן</div>'}
+        </div>
+        <div class="credit">
+          <div class="credit-row"><span>ניצול מסגרת אשראי</span><b><bdi>${FMT.pct(br.util)}</bdi></b></div>
+          <div class="meter ${utilCls}"><i style="width:${Math.min(100, br.util).toFixed(1)}%"></i></div>
+          <small><bdi>${FMT.money(c.open_balance)}</bdi> בשימוש מתוך <bdi>${FMT.money(c.credit_limit)}</bdi></small>
+          <div class="last-order ${br.daysSince > 45 ? 'warn' : ''}">הזמנה אחרונה: ${esc(fmtDate(c.last_order_date))} (לפני ${br.daysSince} ימים)</div>
+        </div>
+      </section>
+      <div class="brief-kpis">
+        <div class="kpi primary"><div class="kpi-label">מכירות מתחילת השנה (YTD)</div><div class="kpi-value"><bdi>${FMT.money(k.ytd_revenue)}</bdi></div><div class="kpi-sub">ינו׳–${esc(lmLabel.split(' ')[0])} ${esc(br.lastMonth.slice(0, 4))}</div></div>
+        <div class="kpi"><div class="kpi-label">צמיחה מול תקופה מקבילה</div><div class="kpi-value ${yoyCls}"><bdi>${FMT.signedPct(k.yoy)}</bdi></div><div class="kpi-sub">מול <bdi>${FMT.money(k.ytd_prev_revenue)}</bdi> אשתקד</div></div>
+        <div class="kpi"><div class="kpi-label">אחוז רווח גולמי ממוצע</div><div class="kpi-value"><bdi>${FMT.pct(k.ytd_margin_pct)}</bdi></div><div class="kpi-sub ${k.ytd_margin_pct < k.chain_margin_pct ? 'neg' : 'pos'}">ממוצע הרשת <bdi>${FMT.pct(k.chain_margin_pct)}</bdi></div></div>
+        <div class="kpi"><div class="kpi-label">יתרת מלאי נוכחית</div><div class="kpi-value"><bdi>${FMT.money(k.stock_value)}</bdi></div><div class="kpi-sub ${k.shortage_items ? 'neg' : ''}">${k.shortage_items} פריטים בסיכון חוסר</div></div>
+      </div>
+      <div class="brief-grid">
+        <div style="min-width:0"><div class="layer-label">מגמת רכישות חודשית · 12 חודשים מול אשתקד</div><div class="brief-trend"></div></div>
+        <div style="min-width:0"><div class="layer-label">נקודות שיחה מומלצות</div><ol class="tp-list">${br.talking.map((t) => `<li class="${t.tone}">${t.text}</li>`).join('')}</ol></div>
+      </div>
+      <div class="layer-label">נקודות תורפה והזדמנויות לפגישה</div>
+      <div class="pt-filter" role="group" aria-label="סינון">
+        <button type="button" class="active" data-grp="all">הכול (${groups.all})</button>
+        <button type="button" data-grp="lostdecl">ירדו או הופסקו (${groups.lostdecl})</button>
+        <button type="button" data-grp="white">White Space (${groups.white})</button>
+        <button type="button" data-grp="stock">התראות מלאי (${groups.stock})</button>
+      </div>
+      <div class="table-wrap"><table class="data-table points-table"><thead><tr><th>סוג</th><th>מוצר</th><th>קטגוריה</th><th>פירוט</th><th>פעולה מומלצת</th></tr></thead><tbody>
+        ${br.points.map((p, i) => `<tr data-grp="${grpOf(p.type)}" class="${i >= 10 ? 'extra' : ''}"><td><span class="badge ${p.type}">${TYPE_LABEL[p.type]}</span></td><td class="prod">${esc(p.product)}</td><td class="cat">${esc(p.category)}</td><td><bdi>${esc(p.detail)}</bdi></td><td class="act">${esc(p.action)}</td></tr>`).join('') || '<tr><td colspan="5">לא נמצאו נקודות תורפה. הלקוח במצב טוב.</td></tr>'}
+      </tbody></table></div>
+      <div class="brief-ask">${LOCKED_ASKS.map((q) => `<button type="button" class="chip-q" data-q="${esc(q)}">${ICON.arrow}<span>${esc(q)}</span></button>`).join('')}</div>
+      <details class="drawer-x sql-drawer brief-sql">
+        <summary><span class="sql-badge">SQL</span><span>${Object.keys(br.queries).length} השאילתות שבנו את התדרוך</span><span class="meta">AlaSQL · ${br.ms.toFixed(1)} ms</span>${ICON.chev}</summary>
+        <div class="sql-body">${Object.values(br.queries).map((q) => `<div class="sql-q-label">${esc(q.label)} · ${q.rows.length} שורות</div><pre class="sql-code">${highlightSQL(q.sql)}</pre>`).join('')}</div>
+      </details>`;
+    const old = stage.firstElementChild;
+    const mount = () => {
+      stage.innerHTML = '';
+      stage.appendChild(art);
+      stage.scrollTop = 0;
+      TQCharts.renderBriefTrend($('.brief-trend', art), br.trend);
+      $$('.pt-filter button', art).forEach((btn) => btn.addEventListener('click', () => {
+        $$('.pt-filter button', art).forEach((x) => x.classList.toggle('active', x === btn));
+        $$('.points-table tbody tr[data-grp]', art).forEach((tr) => { tr.hidden = btn.dataset.grp !== 'all' && tr.dataset.grp !== btn.dataset.grp; });
+      }));
+      $('[data-print]', art).addEventListener('click', () => printBrief(a));
+    };
+    if (animate && old && !old.classList.contains('skeleton')) { old.classList.add('leave'); setTimeout(mount, 180); } else mount();
+  }
+
+  async function printBrief(a) {
+    const c = a.brief.customer;
+    $('#printTitle').textContent = `תדרוך לפגישה · ${c.customer_name} (#${c.customer_id})`;
+    $('#printDate').textContent = (a.meeting ? `פגישה: ${new Date(a.meeting.start).toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short' })} · ` : '') + `הופק ${new Date().toLocaleDateString('he-IL')}`;
+    if (S.view !== 'canvas') setView('canvas');
+    $$('#stage .points-table tbody tr').forEach((tr) => { tr.hidden = false; });
+    document.documentElement.classList.add('print-brief');
+    await sleep(60);
+    $$('#stage .chart-wrap canvas').forEach((cv) => {
+      const img = new Image();
+      img.className = 'print-img';
+      img.src = cv.toDataURL('image/png');
+      img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block';
+      cv.style.display = 'none';
+      cv.parentNode.appendChild(img);
+    });
+    window.print();
   }
 
   // ------------------------------------------------------------ toast
